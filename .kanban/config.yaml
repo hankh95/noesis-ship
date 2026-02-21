@@ -1,0 +1,18 @@
+# Yurtle Kanban Configuration for Noesis Ship
+
+board_name: "Noesis Ship Development"
+default_branch: main
+
+# ID prefix for expeditions
+id_prefix: "SHIP"
+
+# Columns
+columns:
+  - backlog
+  - ready
+  - in-progress
+  - review
+  - done
+
+# Default priority
+default_priority: medium
