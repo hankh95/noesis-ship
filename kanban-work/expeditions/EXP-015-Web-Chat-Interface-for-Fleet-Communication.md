@@ -6,7 +6,7 @@ status: backlog
 priority: medium
 created: 2026-02-21
 assignee: DGX
-depends_on: [EXP-010]
+depends_on: [EXP-010, EXP-017]
 tags: [web-ui, chat, nats, websocket, fleet-comms]
 ---
 
