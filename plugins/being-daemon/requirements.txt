@@ -1,0 +1,2 @@
+# Being Daemon Requirements (EXP-016)
+nats-py>=2.0.0

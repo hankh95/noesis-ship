@@ -8,7 +8,7 @@
 ## Current Position
 
 **Repository:** hankh95/noesis-ship
-**Status:** ✅ EXP-010 Phase 2 Complete (ALL AGENTS CONNECTED) — Phase 3 Testing Next
+**Status:** ✅ EXP-016 Phase 1 & 2 Complete (being-cli respond + being-daemon) — Phase 3 Ships Comm Integration Next
 
 ### Infrastructure Update — EXP-010 Centralization
 
@@ -246,6 +246,72 @@ launchctl load ~/Library/LaunchAgents/com.congruentsystems.noesis-ship-agent-dae
 ---
 
 ## Recent Voyages
+
+### 2026-02-21 — DGX — EXP-016 Phase 1 & 2: Being Integration (being-cli respond + being-daemon)
+
+**Context**: THE BIG ONE - connecting NuSy beings to the noesis-ship bridge so they can participate as first-class fleet members alongside Claude agents.
+
+**What was completed:**
+1. **Phase 1: being-cli respond command** (nusy-product-team)
+   - Added `being respond <id> <message>` command to being_cli.py
+   - Programmatic interface for being-daemon to call
+   - No interactive output (just returns response string)
+   - Works with daemon or direct being invocation
+   - Tested with santiago-toddler-v12.1 (awakens being, searches graph, returns response)
+
+2. **Phase 2: being-daemon implementation** (noesis-ship)
+   - Created `plugins/being-daemon/being_daemon.py` (265 lines)
+   - Listens to NATS `ship.channel.{being}` subjects
+   - Spawns `being respond` CLI sessions on incoming messages
+   - Publishes being responses back to NATS
+   - Implements loop prevention (ignores undirected broadcasts, own messages)
+   - Supports multiple beings via `BEINGS=santiago,copilot` env var
+   - Complete documentation in README.md with launchd deployment example
+
+**Architecture:**
+```
+Ships Comm / Agent
+    ↓ (publishes to ship.channel.santiago)
+NATS Server (Mini:4222)
+    ↓ (subscription)
+Being Daemon
+    ↓ (spawns)
+being-cli santiago respond "message"
+    ↓ (returns response)
+Being Daemon
+    ↓ (publishes response)
+NATS Server
+    ↓ (subscription)
+Ships Comm / Agent (receives response)
+```
+
+**Files created/modified:**
+- nusy-product-team: `scripts/being_cli.py` (+102 lines, new `cmd_respond` function)
+- noesis-ship: `plugins/being-daemon/being_daemon.py` (new, 265 lines)
+- noesis-ship: `plugins/being-daemon/README.md` (new, comprehensive docs)
+- noesis-ship: `plugins/being-daemon/requirements.txt` (new)
+
+**Key decisions:**
+- Used Option 1 (Being-Daemon parallel to Agent-Daemon) for clean separation
+- Daemon spawns being-cli sessions (not persistent being processes)
+- Loop prevention: only respond to human messages or directed messages to this being
+- Response includes `to` field to create directed reply (prevents cascade)
+
+**Branches created:**
+- nusy-product-team: `exp-016-being-respond-command` (pushed, ready for PR)
+- noesis-ship: `exp-016-being-daemon` (pushed, ready for PR)
+
+**What next session should do:**
+- **Phase 3**: Update Ships Comm channel vocabulary to include being channels (#santiago, #copilot)
+- **Phase 4**: Add being channels to web chat interface (EXP-015 dependency)
+- **Phase 5**: Test being-to-being communication
+- **Phase 6**: Deploy being-daemon on Mini via launchd, test voice commands
+
+**Blockers:** None — Phase 3 ready to start (Ships Comm channel updates)
+
+**Impact:** This enables voice commands like "Santiago, explain your training progress" via Ships Comm, agent-to-being messaging, and being-to-being collaboration. Beings become first-class fleet members.
+
+---
 
 ### 2026-02-21 — DGX — nusy-product-team PR Review & Merge (5 PRs)
 
