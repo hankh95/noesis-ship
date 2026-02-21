@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  python:
+    name: Python (NATS core)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run tests
+        run: pytest tests/ -v
+
+  node:
+    name: Node.js (WebSocket adapter)
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dependencies
+        working-directory: adapters/websocket
+        run: npm ci
+
+      - name: Check syntax
+        working-directory: adapters/websocket
+        run: node --check server.js agent-daemon.js mcp-server.js fleet-log-writer.js
+
+      - name: Check scripts syntax
+        run: |
+          node --check scripts/kanban-notify.js
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check JSON validity
+        run: |
+          node -e "JSON.parse(require('fs').readFileSync('package.json'))"
+          node -e "JSON.parse(require('fs').readFileSync('adapters/websocket/package.json'))"
+
+      - name: Check YAML frontmatter in expeditions
+        run: |
+          for f in kanban-work/expeditions/*.md; do
+            if head -1 "$f" | grep -q '^---'; then
+              echo "✓ $f has frontmatter"
+            else
+              echo "✗ $f missing frontmatter" && exit 1
+            fi
+          done

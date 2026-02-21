@@ -2,7 +2,7 @@
 id: EXP-003
 title: "Document DGX deployment with systemd services"
 type: expedition
-status: review
+status: done
 priority: medium
 created: 2026-02-21
 completed: 2026-02-21
