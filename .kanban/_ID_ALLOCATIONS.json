@@ -5,5 +5,40 @@
     "number": 1,
     "allocated_at": "2026-02-21T01:57:01.607879",
     "allocated_by": "Hank Head"
+  },
+  {
+    "id": "EXP-002",
+    "prefix": "EXP",
+    "number": 2,
+    "allocated_at": "2026-02-21T02:01:12.403998",
+    "allocated_by": "Hank Head"
+  },
+  {
+    "id": "EXP-003",
+    "prefix": "EXP",
+    "number": 3,
+    "allocated_at": "2026-02-21T02:01:12.682107",
+    "allocated_by": "Hank Head"
+  },
+  {
+    "id": "EXP-004",
+    "prefix": "EXP",
+    "number": 4,
+    "allocated_at": "2026-02-21T02:01:12.986441",
+    "allocated_by": "Hank Head"
+  },
+  {
+    "id": "EXP-005",
+    "prefix": "EXP",
+    "number": 5,
+    "allocated_at": "2026-02-21T02:01:13.289123",
+    "allocated_by": "Hank Head"
+  },
+  {
+    "id": "EXP-006",
+    "prefix": "EXP",
+    "number": 6,
+    "allocated_at": "2026-02-21T02:01:13.552116",
+    "allocated_by": "Hank Head"
   }
 ]
