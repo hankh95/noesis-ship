@@ -20,7 +20,7 @@
  *   PROJECT_DIR      — Project working directory (default: ~/Projects/nusy-product-team)
  *   AGENT_NAME       — Display name (default: from hostname)
  *   MAX_TURNS        — Max conversation turns per message (default: 10)
- *   PERMISSION_MODE  — SDK permission mode (default: bypassPermissions)
+ *   PERMISSION_MODE  — SDK permission mode (default: "default"; set to "bypassPermissions" for unattended operation)
  *
  * EXP-018: Agent Daemon v2 — Claude Agent SDK + NATS-native messaging
  */
@@ -49,7 +49,7 @@ const PROJECT_DIR =
   process.env.PROJECT_DIR ||
   path.join(os.homedir(), "Projects/nusy-product-team");
 const MAX_TURNS = parseInt(process.env.MAX_TURNS || "10", 10);
-const PERMISSION_MODE = process.env.PERMISSION_MODE || "bypassPermissions";
+const PERMISSION_MODE = process.env.PERMISSION_MODE || "default";
 const RECONNECT_INTERVAL = 3000;
 const RESPONSE_TIMEOUT = 120_000; // 2 minutes
 
@@ -135,6 +135,7 @@ async function initTransport() {
 }
 
 function connectWebSocket() {
+  if (ws && ws.readyState === WebSocket.OPEN) return;
   try {
     ws = new WebSocket(BRIDGE_URL);
   } catch (err) {
@@ -293,56 +294,57 @@ async function handleMessage(msg) {
   }
 
   let responseText = "";
-  let timedOut = false;
-
-  // Timeout handler
-  const timeout = setTimeout(() => {
-    timedOut = true;
-    log("SDK query timed out");
-  }, RESPONSE_TIMEOUT);
+  let response = null;
 
   try {
-    const response = query({
+    response = query({
       prompt: userMessage,
       options,
     });
 
-    for await (const message of response) {
-      if (timedOut) {
-        // Try to interrupt
-        if (response.interrupt) {
+    // Timeout handler — interrupt the SDK query directly so the for-await
+    // loop unblocks even if the SDK is waiting for the next event.
+    const timeout = setTimeout(async () => {
+      log("SDK query timed out — interrupting");
+      if (response && response.interrupt) {
+        try {
           await response.interrupt();
+        } catch {
+          // Interrupt may throw if already finished
         }
-        break;
       }
+    }, RESPONSE_TIMEOUT);
 
-      // Capture session ID from init event
-      if (message.type === "system" && message.subtype === "init") {
-        sessionId = message.session_id;
-        log(`Session: ${sessionId.substring(0, 8)}...`);
-      }
-
-      // Collect final result
-      if (message.type === "result") {
-        if (message.subtype === "success") {
-          responseText = message.result || "";
-        } else {
-          log(`SDK result: ${message.subtype}`);
-          responseText =
-            message.result || `(Query ended: ${message.subtype})`;
+    try {
+      for await (const message of response) {
+        // Capture session ID from init event
+        if (message.type === "system" && message.subtype === "init") {
+          sessionId = message.session_id;
+          log(`Session: ${sessionId.substring(0, 8)}...`);
         }
-        log(
-          `Cost: $${message.total_cost_usd || "?"}, Turns: ${message.num_turns || "?"}`
-        );
+
+        // Collect final result
+        if (message.type === "result") {
+          if (message.subtype === "success") {
+            responseText = message.result || "";
+          } else {
+            log(`SDK result: ${message.subtype}`);
+            responseText =
+              message.result || `(Query ended: ${message.subtype})`;
+          }
+          log(
+            `Cost: $${message.total_cost_usd || "?"}, Turns: ${message.num_turns || "?"}`
+          );
+        }
       }
+    } finally {
+      clearTimeout(timeout);
     }
   } catch (err) {
     log(`SDK error: ${err.message}`);
     responseText = `(Agent error: ${err.message})`;
     // Reset session on error — next message starts fresh
     sessionId = null;
-  } finally {
-    clearTimeout(timeout);
   }
 
   // Send response
@@ -419,15 +421,25 @@ log(`NATS: ${NATS_URL}`);
 log(`WebSocket fallback: ${BRIDGE_URL}`);
 log(`Max turns: ${MAX_TURNS}`);
 log(`Permission mode: ${PERMISSION_MODE}`);
+if (PERMISSION_MODE === "bypassPermissions") {
+  log("WARNING: Running with bypassPermissions — all tool calls are auto-approved");
+}
 
 await initTransport();
 
-// Keep alive
-process.on("SIGINT", () => {
+// Keep alive — handle both SIGINT (Ctrl-C) and SIGTERM (process managers)
+async function shutdown() {
   log("Shutting down...");
   if (natsConnection) {
-    natsConnection.close();
+    try {
+      await natsConnection.drain();
+    } catch {
+      // drain may fail if already closed
+    }
   }
   if (ws) ws.close();
   process.exit(0);
-});
+}
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
