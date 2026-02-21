@@ -2,10 +2,10 @@
 id: EXP-018
 title: "Agent Daemon v2: Claude Agent SDK + NATS-native messaging"
 type: expedition
-status: backlog
+status: review
 priority: high
 created: 2026-02-21
-assignee:
+assignee: M5
 depends_on: [EXP-010]
 tags: [agent-daemon, claude-sdk, nats, architecture, performance]
 related: [EXP-001, EXP-010, EXP-901]

@@ -7,9 +7,11 @@
     "start": "node -r dotenv/config server.js",
     "start:bare": "node server.js",
     "daemon": "node agent-daemon.js",
+    "daemon:v2": "node agent-daemon-v2.mjs",
     "fleet-log": "node fleet-log-writer.js",
     "mcp": "node mcp-server.js",
     "test": "node test-ws.js",
+    "test:daemon-v2": "node test-daemon-v2.mjs",
     "groups": "node groups.js",
     "send": "node send.js"
   },
@@ -23,6 +25,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.50",
     "@anthropic-ai/claude-code": "^2.1.49",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "bonjour-service": "^1.3.0",

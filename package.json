@@ -9,6 +9,7 @@
   "scripts": {
     "start": "cd adapters/websocket && node -r dotenv/config server.js",
     "daemon": "cd adapters/websocket && node agent-daemon.js",
+    "daemon:v2": "cd adapters/websocket && node agent-daemon-v2.mjs",
     "mcp": "cd adapters/websocket && node mcp-server.js",
     "test:ws": "cd adapters/websocket && node test-ws.js"
   },
