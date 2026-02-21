@@ -25,9 +25,11 @@ require("dotenv").config();
  *   CLAUDE_SESSION_DIR   — Path to Claude project dir for session watcher
  *   MACHINE_NAME         — Display name for this machine's agent
  *   SESSION_GROUP_ID     — Default group ID for session messages
+ *   NATS_URL             — NATS server URL (default: "nats://localhost:4222", optional)
  */
 
 const { WebSocketServer, WebSocket } = require("ws");
+const { connect, StringCodec } = require("nats");
 const http = require("http");
 const path = require("path");
 const fs = require("fs");
@@ -36,6 +38,11 @@ const SessionWatcher = require("./session-watcher");
 // ─── Configuration ──────────────────────────────────────────────────────────
 
 const WS_PORT = process.env.WS_PORT || 3100;
+const NATS_URL = process.env.NATS_URL || "nats://localhost:4222";
+
+// NATS connection state
+let natsConnection = null;
+const sc = StringCodec();
 
 // Parse AGENTS from .env — format: "id:Name,id:Name" (default: mini:Mini,m5:M5,dgx:DGX,copilot:Copilot)
 const AGENTS = (process.env.AGENTS || "mini:Mini,m5:M5,dgx:DGX,copilot:Copilot")
@@ -51,6 +58,53 @@ const AGENTS = (process.env.AGENTS || "mini:Mini,m5:M5,dgx:DGX,copilot:Copilot")
 const CLAUDE_SESSION_DIR = process.env.CLAUDE_SESSION_DIR || "";
 const MACHINE_NAME = process.env.MACHINE_NAME || require("os").hostname().split(".")[0];
 const SESSION_GROUP_ID = process.env.SESSION_GROUP_ID || "";
+
+// ─── NATS Connection ────────────────────────────────────────────────────────
+
+async function initNATS() {
+  try {
+    console.log(`[NATS] Connecting to ${NATS_URL}...`);
+    natsConnection = await connect({ servers: NATS_URL });
+    console.log(`[NATS] Connected to ${natsConnection.getServer()}`);
+
+    // Subscribe to channel messages from NATS
+    const sub = natsConnection.subscribe("ship.channel.>");
+    (async () => {
+      for await (const msg of sub) {
+        try {
+          const data = sc.decode(msg.data);
+          const parsed = JSON.parse(data);
+          // Relay NATS messages to all WebSocket clients
+          broadcastToClients(parsed);
+        } catch (err) {
+          console.error(`[NATS] Error processing message:`, err.message);
+        }
+      }
+    })();
+
+    // Handle connection errors
+    (async () => {
+      for await (const status of natsConnection.status()) {
+        console.log(`[NATS] Status: ${status.type}: ${status.data}`);
+      }
+    })();
+
+    // Handle connection close
+    natsConnection.closed().then((err) => {
+      if (err) {
+        console.error(`[NATS] Connection closed with error:`, err.message);
+      } else {
+        console.log(`[NATS] Connection closed`);
+      }
+      natsConnection = null;
+    });
+
+  } catch (err) {
+    console.warn(`[NATS] Connection failed: ${err.message}`);
+    console.log(`[NATS] Running in WebSocket-only mode`);
+    natsConnection = null;
+  }
+}
 
 // ─── WebSocket Server ───────────────────────────────────────────────────────
 
@@ -138,6 +192,8 @@ function getTailscaleIP() {
 
 function getStatusPayload() {
   const payload = { type: "status", websocket: "connected", agents: AGENTS };
+  // Include NATS connection status
+  payload.nats = natsConnection ? "connected" : "disconnected";
   // Include configured default group so the app can use it during setup
   if (SESSION_GROUP_ID) {
     payload.defaultGroup = SESSION_GROUP_ID;
@@ -172,7 +228,7 @@ async function handleSend(msg, senderWs) {
   // Broadcast to other WebSocket clients (agent processes) so they see user messages.
   // The sender already shows the message locally — exclude them to avoid duplicates.
   const cleanMessage = message.replace(/^@\w+\s*/, "") || message;
-  broadcastToClients({
+  const messagePayload = {
     type: "message",
     group,
     from: "User",
@@ -180,7 +236,20 @@ async function handleSend(msg, senderWs) {
     message: cleanMessage,
     to: to || null,
     timestamp: new Date().toISOString(),
-  }, senderWs);
+  };
+
+  // Publish to NATS if connected
+  if (natsConnection && group) {
+    try {
+      const subject = `ship.channel.${group}`;
+      natsConnection.publish(subject, sc.encode(JSON.stringify(messagePayload)));
+      console.log(`[NATS] Published to ${subject}`);
+    } catch (err) {
+      console.error(`[NATS] Publish error:`, err.message);
+    }
+  }
+
+  broadcastToClients(messagePayload, senderWs);
 
   // Code Companion sessions: write to inbox file
   const isSession = group && group.startsWith("session:");
@@ -216,6 +285,18 @@ async function handleAgentMessage(msg, senderWs) {
     message,
     timestamp,
   };
+
+  // Publish to NATS if connected
+  if (natsConnection && group) {
+    try {
+      const subject = `ship.channel.${group}`;
+      natsConnection.publish(subject, sc.encode(JSON.stringify(bridgeMessage)));
+      console.log(`[NATS] Published agent message to ${subject}`);
+    } catch (err) {
+      console.error(`[NATS] Publish error:`, err.message);
+    }
+  }
+
   broadcastToClients(bridgeMessage);
   console.log(`[Bridge] Agent ${from}: ${message.substring(0, 80)}`);
 }
@@ -328,6 +409,11 @@ function writeSessionInbox(message, to) {
 // ─── Start ──────────────────────────────────────────────────────────────────
 
 console.log("[Bridge] Starting Noesis Ship WebSocket Relay...");
+
+// Initialize NATS connection (optional)
+initNATS().catch((err) => {
+  console.error(`[NATS] Initialization error:`, err.message);
+});
 
 startBonjour();
 
