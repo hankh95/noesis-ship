@@ -274,7 +274,7 @@ async function handleSend(msg, senderWs) {
 // HTTP POST: curl http://localhost:3102/message -d '{"group":"session:active","from":"M5","message":"All GPUs nominal"}'
 
 async function handleAgentMessage(msg, senderWs) {
-  const { group, from, message } = msg;
+  const { group, from, message, to } = msg;
 
   if (!group || !from || !message) {
     console.warn("[Bridge] agent_message missing required fields (group, from, message)");
@@ -292,6 +292,10 @@ async function handleAgentMessage(msg, senderWs) {
     message,
     timestamp,
   };
+  // Preserve `to` field for directed agent-to-agent messages
+  if (to) {
+    bridgeMessage.to = to;
+  }
 
   // Publish to NATS if connected (tag with origin to prevent echo loops)
   if (natsConnection && group) {
