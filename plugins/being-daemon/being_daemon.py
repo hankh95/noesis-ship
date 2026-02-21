@@ -27,11 +27,11 @@ Author: DGX (EXP-016)
 """
 
 import os
+import re
 import sys
 import asyncio
 import json
-import subprocess
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -86,11 +86,14 @@ class BeingDaemon:
             # Extract message fields
             from_sender = data.get('from', 'unknown')
             from_id = data.get('fromId', '')
+            origin = data.get('origin', '')
             to_recipient = data.get('to', '')
             message_text = data.get('message', '')
 
-            # Loop prevention: ignore self-messages
+            # Loop prevention: ignore self-messages (check both fromId and origin)
             if from_id.lower() == f'being:{being.lower()}':
+                return
+            if origin.lower() == f'being-daemon:{being.lower()}':
                 return
 
             # Loop prevention: ignore undirected broadcasts from other beings/agents
@@ -116,8 +119,9 @@ class BeingDaemon:
                     'type': 'message',
                     'from': being,
                     'fromId': f'being:{being.lower()}',
+                    'origin': f'being-daemon:{being.lower()}',
                     'message': result,
-                    'timestamp': datetime.utcnow().isoformat(),
+                    'timestamp': datetime.now(timezone.utc).isoformat(),
                     'to': from_sender  # Direct response back to sender
                 }
 
@@ -133,10 +137,11 @@ class BeingDaemon:
             import traceback
             traceback.print_exc()
 
+    _LOG_LINE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}')
+
     async def _spawn_being_cli(self, being: str, message: str) -> Optional[str]:
         """Spawn being-cli respond command and return response."""
         try:
-            # Build command
             cmd = [
                 "python3",
                 str(self.being_cli_path),
@@ -145,35 +150,38 @@ class BeingDaemon:
                 message
             ]
 
-            # Run command with timeout
             print(f"[{being}] Spawning being-cli respond...")
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=60,  # 60 second timeout
-                cwd=str(self.project_dir)
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=str(self.project_dir),
             )
 
-            if result.returncode == 0:
-                response = result.stdout.strip()
-                # Filter out log lines (they start with timestamps)
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    proc.communicate(), timeout=60
+                )
+            except asyncio.TimeoutError:
+                proc.kill()
+                await proc.communicate()
+                print(f"[{being}] being-cli timeout (60s)")
+                return None
+
+            if proc.returncode == 0:
+                response = stdout.decode().strip()
                 lines = response.split('\n')
-                # Keep only lines that don't look like log messages
                 response_lines = [
                     line for line in lines
-                    if not line.startswith('2026-') and line.strip()
+                    if not self._LOG_LINE_RE.match(line) and line.strip()
                 ]
                 response = '\n'.join(response_lines).strip()
                 return response if response else None
             else:
-                print(f"[{being}] being-cli returned error code {result.returncode}")
-                print(f"  stderr: {result.stderr[:200]}")
+                print(f"[{being}] being-cli returned error code {proc.returncode}")
+                print(f"  stderr: {stderr.decode()[:200]}")
                 return None
 
-        except subprocess.TimeoutExpired:
-            print(f"[{being}] being-cli timeout (60s)")
-            return None
         except Exception as e:
             print(f"[{being}] Failed to spawn being-cli: {e}")
             return None
