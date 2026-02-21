@@ -3,7 +3,7 @@ kanban:
   theme: nautical
 
   paths:
-    root: work/
+    root: kanban-work/expeditions/
     scan_paths:
     - "kanban-work/expeditions/"
 
