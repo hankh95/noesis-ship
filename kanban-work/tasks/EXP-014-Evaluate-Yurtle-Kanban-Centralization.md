@@ -1,7 +1,7 @@
 ---
 id: EXP-014
 title: "Evaluate Yurtle-Kanban Centralization"
-type: expedition
+type: task
 status: backlog
 priority: low
 created: 2026-02-21

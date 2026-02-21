@@ -3,9 +3,12 @@ kanban:
   theme: nautical
 
   paths:
-    root: kanban-work/expeditions/
+    root: kanban-work/
     scan_paths:
     - "kanban-work/expeditions/"
+    - "kanban-work/features/"
+    - "kanban-work/tasks/"
+    - "kanban-work/bugs/"
 
   ignore:
     - "**/archive/**"

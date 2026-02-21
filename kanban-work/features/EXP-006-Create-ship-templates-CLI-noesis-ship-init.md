@@ -1,7 +1,7 @@
 ---
 id: EXP-006
 title: "Create ship templates CLI (noesis-ship init)"
-type: expedition
+type: feature
 status: backlog
 priority: medium
 created: 2026-02-21

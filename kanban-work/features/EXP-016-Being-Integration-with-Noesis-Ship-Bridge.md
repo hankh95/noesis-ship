@@ -1,7 +1,7 @@
 ---
 id: EXP-016
 title: "Being Integration with Noesis-Ship Bridge"
-type: expedition
+type: feature
 status: backlog
 priority: critical
 created: 2026-02-21

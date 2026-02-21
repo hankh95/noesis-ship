@@ -1,7 +1,7 @@
 ---
 id: EXP-012
 title: "Fix agent name overwrite bug in agent-daemon"
-type: expedition
+type: bug
 status: done
 priority: high
 created: 2026-02-21

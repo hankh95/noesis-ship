@@ -46,7 +46,20 @@ yurtle-kanban move EXP-XXX done        # Mark complete
 
 Full documentation: [yurtle-kanban README](https://github.com/hankh95/yurtle-kanban)
 
-### Expedition File Format
+### Work Item Types
+
+Work items are organized by type into separate directories:
+
+| Type | Directory | Prefix | When to use |
+|------|-----------|--------|-------------|
+| **expedition** | `kanban-work/expeditions/` | `EXP-` | Large cross-cutting work spanning multiple files/systems |
+| **feature** | `kanban-work/features/` | `FEAT-` | New capabilities or enhancements to existing functionality |
+| **task** | `kanban-work/tasks/` | `TASK-` | Discrete units of work: evaluations, config changes, maintenance |
+| **bug** | `kanban-work/bugs/` | `BUG-` | Defects, incorrect behavior, things that need fixing |
+
+**Ask the user** if you're unsure which type to use. The user will specify the type when requesting new work items.
+
+### Work Item File Format
 
 **REQUIRED** for yurtle-kanban detection:
 
@@ -68,7 +81,7 @@ related: [EXP-YYY]
 Content...
 ```
 
-**IMPORTANT:** Expeditions without YAML frontmatter will NOT appear in the kanban board.
+**IMPORTANT:** Work items without YAML frontmatter will NOT appear in the kanban board.
 
 ## Contribution Workflow
 
@@ -132,7 +145,10 @@ noesis-ship/
 │   └── mcp/               # (planned)
 ├── tests/                 # Python test suite
 ├── kanban-work/           # Work tracking
-│   └── expeditions/       # EXP-XXX expedition files
+│   ├── expeditions/       # Large cross-cutting work (EXP-XXX)
+│   ├── features/          # New capabilities (FEAT-XXX)
+│   ├── tasks/             # Discrete work items (TASK-XXX)
+│   └── bugs/              # Defects and fixes (BUG-XXX)
 ├── templates/             # Ship templates (Dinghy, Sloop, Galleon, Carrier)
 ├── docs/                  # Architecture and guides
 └── claude-workspace/      # Session continuity (ACTIVE-CONTEXT.md)

@@ -1,7 +1,7 @@
 ---
 id: EXP-015
 title: "Web Chat Interface for Fleet Communication"
-type: expedition
+type: feature
 status: backlog
 priority: medium
 created: 2026-02-21
