@@ -1,0 +1,40 @@
+[Unit]
+Description=Noesis Ship Agent Daemon - Claude Code Spawner
+Documentation=https://github.com/hankh95/noesis-ship
+After=network.target noesis-ship-websocket.service
+Wants=noesis-ship-websocket.service
+
+[Service]
+Type=simple
+User=__USER__
+Group=__USER__
+WorkingDirectory=__HOME__/projects/noesis-ship/adapters/websocket
+ExecStart=/usr/bin/node agent-daemon.js
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=noesis-ship-agent
+
+# Environment variables
+Environment=NODE_ENV=production
+Environment=BRIDGE_URL=ws://localhost:3100
+Environment=PROJECT_DIR=__HOME__/projects/carclaw
+Environment=CLAUDE_BIN=/usr/local/bin/claude
+Environment=AGENT_NAME=DGX
+Environment=MAX_TURNS=10
+
+# Security (relaxed for Claude Code spawning)
+NoNewPrivileges=false
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=__HOME__/projects/noesis-ship
+ReadWritePaths=__HOME__/.claude
+
+# Resource limits (higher for LLM inference)
+LimitNOFILE=8192
+LimitNPROC=1024
+
+[Install]
+WantedBy=multi-user.target

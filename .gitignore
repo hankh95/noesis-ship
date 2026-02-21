@@ -43,3 +43,12 @@ Thumbs.db
 # Environment
 .env
 .env.local
+
+# Logs and data
+logs/
+*.log
+data/
+jetstream/
+
+# Generated local configs
+config/nats-server.local.conf

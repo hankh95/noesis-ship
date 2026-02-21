@@ -1,0 +1,31 @@
+[Unit]
+Description=NATS Server - Message Broker for Noesis Ship
+Documentation=https://docs.nats.io/
+After=network.target
+Before=noesis-ship-websocket.service noesis-ship-agent-daemon.service
+
+[Service]
+Type=simple
+User=__USER__
+Group=__USER__
+ExecStart=__HOME__/.local/bin/nats-server -js -c __HOME__/projects/noesis-ship/config/nats-server.local.conf
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nats-server
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=__HOME__/projects/noesis-ship/data
+ReadWritePaths=__HOME__/projects/noesis-ship/logs
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

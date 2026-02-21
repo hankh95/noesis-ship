@@ -179,8 +179,21 @@ sudo systemctl enable noesis-ship
 sudo systemctl start noesis-ship
 ```
 
+## Platform-Specific Guides
+
+### DGX (Ubuntu Linux with systemd)
+
+For production deployment on NVIDIA DGX Spark or other Ubuntu Linux systems with systemd, see the comprehensive [DGX Deployment Guide](deployment/dgx.md), which includes:
+
+- Systemd service configuration
+- NATS server setup
+- Service management and monitoring
+- Security hardening
+- Troubleshooting
+
 ## Next Steps
 
 - Read the [Architecture](architecture.md) guide
 - Learn about [Adapters](adapters.md)
 - Explore [Ship Templates](../templates/)
+- For production Linux deployment: [DGX Deployment Guide](deployment/dgx.md)
