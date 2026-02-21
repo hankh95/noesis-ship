@@ -3,21 +3,63 @@
     "id": "EXP-001",
     "prefix": "EXP",
     "number": 1,
-    "allocated_at": "2026-02-20T21:10:37.016226",
-    "allocated_by": "unknown"
+    "allocated_at": "2026-02-21T01:57:01.607879",
+    "allocated_by": "DGX"
+  },
+  {
+    "id": "EXP-002",
+    "prefix": "EXP",
+    "number": 2,
+    "allocated_at": "2026-02-21T02:01:12.403998",
+    "allocated_by": "DGX"
+  },
+  {
+    "id": "EXP-003",
+    "prefix": "EXP",
+    "number": 3,
+    "allocated_at": "2026-02-21T02:01:12.682107",
+    "allocated_by": "DGX"
+  },
+  {
+    "id": "EXP-004",
+    "prefix": "EXP",
+    "number": 4,
+    "allocated_at": "2026-02-21T02:01:12.986441",
+    "allocated_by": "DGX"
+  },
+  {
+    "id": "EXP-005",
+    "prefix": "EXP",
+    "number": 5,
+    "allocated_at": "2026-02-21T02:01:13.289123",
+    "allocated_by": "DGX"
+  },
+  {
+    "id": "EXP-006",
+    "prefix": "EXP",
+    "number": 6,
+    "allocated_at": "2026-02-21T02:01:13.552116",
+    "allocated_by": "DGX"
+  },
+  {
+    "id": "EXP-007",
+    "prefix": "EXP",
+    "number": 7,
+    "allocated_at": "2026-02-21T02:01:36.630926",
+    "allocated_by": "DGX"
   },
   {
     "id": "EXP-008",
     "prefix": "EXP",
     "number": 8,
     "allocated_at": "2026-02-20T21:12:04.994627",
-    "allocated_by": "unknown"
+    "allocated_by": "M5"
   },
   {
-    "id": "EXP-008",
+    "id": "EXP-009",
     "prefix": "EXP",
-    "number": 8,
+    "number": 9,
     "allocated_at": "2026-02-20T21:12:09.650791",
-    "allocated_by": "unknown"
+    "allocated_by": "M5"
   }
 ]

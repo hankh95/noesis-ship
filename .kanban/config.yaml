@@ -1,6 +1,6 @@
 # yurtle-kanban configuration
 kanban:
-  theme: software
+  theme: nautical
 
   paths:
     root: work/
