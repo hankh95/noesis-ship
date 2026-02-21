@@ -3,8 +3,11 @@
 board_name: "Noesis Ship Development"
 default_branch: main
 
-# ID prefix for expeditions
-id_prefix: "SHIP"
+# ID prefix for expeditions (using EXP to align with nusy-product-team)
+id_prefix: "EXP"
+
+# Work directory
+work_dir: "kanban-work/expeditions"
 
 # Columns
 columns:
