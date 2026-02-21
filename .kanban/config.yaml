@@ -6,7 +6,7 @@ default_branch: main
 # ID prefix for expeditions (using EXP to align with nusy-product-team)
 id_prefix: "EXP"
 
-# Work directory
+# Work directory (align with nusy-product-team)
 work_dir: "kanban-work/expeditions"
 
 # Columns
