@@ -5,6 +5,7 @@ title: "NuSy NATS Implementations Reference"
 category: reference
 audience: [developer, agent]
 created: 2026-02-21
+reviewed: 2026-02-21
 tags: [nats, nusy, reference, implementations]
 ---
 
@@ -192,22 +193,24 @@ ship.health                           # Health checks
 
 ---
 
-## Integration Plan
+## Integration Status
 
-When noesis-ship is stable:
+| Step | Expedition | Status | Notes |
+|------|-----------|--------|-------|
+| WebSocket↔NATS relay | EXP-001 | **Done** | Bidirectional relay with graceful fallback |
+| NATS centralization | EXP-010 | **Done** | Mini M4 as central NATS server, all agents connected via Tailscale |
+| NuSy being migration | EXP-895 | Backlog | Replace `brain/services/nats_channels.py` with noesis-ship imports |
+| CarClaw→noesis-ship | EXP-897 | Backlog | Agent-daemon connects to noesis-ship WebSocket adapter |
+| Agent Daemon v2 | EXP-018 | Backlog | Replace `claude -p` spawning with Agent SDK + direct NATS |
 
-1. **NuSy beings will migrate to noesis-ship** (EXP-895)
-   - Replace `brain/services/nats_channels.py` with `from noesis_ship.core import NATSChannelService`
-   - Subject pattern changes: `nusy.channel.*` → `ship.channel.*`
-   - Message format stays compatible
+### Namespace verification
 
-2. **WebSocket adapter will connect to NATS** (EXP-001)
-   - Relay messages between WebSocket clients and NATS channels
-   - Subject: `ship.channel.{channel_name}`
+The `ship.*` namespace proposed in this doc is now **in production**:
+- `server.js` publishes/subscribes on `ship.channel.{group}` (lines 267, 319)
+- `fleet-log-writer.js` subscribes on `ship.channel.>` (line 209)
+- `agent-daemon.js` sends `broadcast` messages to the bridge via WebSocket; these are relayed to other WebSocket clients only, not published to `ship.channel.*` via NATS
 
-3. **CarClaw will use noesis-ship instead of OpenClaw** (EXP-897)
-   - Agent-daemon connects to noesis-ship WebSocket adapter
-   - Messages flow: iPhone → WebSocket → NATS → Being → WebSocket → iPhone
+The `nusy.*` namespace remains in the NuSy project for legacy compatibility. Migration to `ship.*` will happen when EXP-895 is implemented.
 
 ---
 
@@ -220,4 +223,5 @@ When noesis-ship is stable:
 ---
 
 **Created:** 2026-02-21
-**Next Review:** After noesis-ship reaches v0.2.0 (stable NATS integration)
+**Last Reviewed:** 2026-02-21 (CHORE-001)
+**Next Review:** After EXP-895 (NuSy being migration) is implemented
