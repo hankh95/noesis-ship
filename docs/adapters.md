@@ -14,7 +14,7 @@ Adapters bridge external protocols to the Noesis Ship core. Each adapter runs as
 
 ## WebSocket Adapter
 
-The WebSocket adapter (`adapters/websocket/`) provides real-time bidirectional communication for clients like Ships Comm (iOS) and web dashboards.
+The WebSocket adapter (`packages/relay/`) provides real-time bidirectional communication for clients like Ships Comm (iOS) and web dashboards.
 
 ### Protocol
 
@@ -91,7 +91,7 @@ curl -X POST http://localhost:3102/message \
 
 ## MCP Adapter
 
-The MCP adapter (`adapters/websocket/mcp-server.js`) provides Model Context Protocol tools for Claude Code:
+The MCP adapter (`packages/mcp-server/mcp-server.js`) provides Model Context Protocol tools for Claude Code:
 
 ### Tools
 
@@ -110,7 +110,7 @@ Add to your project's `.mcp.json`:
   "mcpServers": {
     "noesis-ship": {
       "command": "node",
-      "args": ["/path/to/noesis-ship/adapters/websocket/mcp-server.js"],
+      "args": ["/path/to/noesis-ship/packages/mcp-server/mcp-server.js"],
       "env": {
         "BRIDGE_URL": "ws://localhost:3100"
       }

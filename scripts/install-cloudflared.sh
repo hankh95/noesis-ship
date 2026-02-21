@@ -166,7 +166,7 @@ EOF
 fi
 
 # 7. Update noesis-ship .env
-ENV_FILE="$SCRIPT_DIR/../adapters/websocket/.env"
+ENV_FILE="$SCRIPT_DIR/../packages/relay/.env"
 if [ -f "$ENV_FILE" ]; then
     if ! grep -q "^RELAY_URL=" "$ENV_FILE"; then
         echo "" >> "$ENV_FILE"

@@ -53,10 +53,9 @@ git clone https://github.com/hankh95/noesis-ship.git
 cd noesis-ship
 ```
 
-### 2. Install WebSocket Adapter Dependencies
+### 2. Install Dependencies (npm workspaces)
 
 ```bash
-cd adapters/websocket
 npm install
 ```
 
@@ -94,7 +93,7 @@ nats-server --version
 ### Create .env File
 
 ```bash
-cd /home/hankh959/projects/noesis-ship/adapters/websocket
+cd /home/hankh959/projects/noesis-ship/packages/relay
 cp .env.example .env
 ```
 
@@ -200,7 +199,7 @@ Wants=nats-server.service
 Type=simple
 User=hankh959
 Group=hankh959
-WorkingDirectory=/home/hankh959/projects/noesis-ship/adapters/websocket
+WorkingDirectory=/home/hankh959/projects/noesis-ship/packages/relay
 ExecStart=/usr/bin/node server.js
 Restart=always
 RestartSec=5
@@ -245,7 +244,7 @@ Wants=noesis-ship-websocket.service
 Type=simple
 User=hankh959
 Group=hankh959
-WorkingDirectory=/home/hankh959/projects/noesis-ship/adapters/websocket
+WorkingDirectory=/home/hankh959/projects/noesis-ship/packages/daemon
 ExecStart=/usr/bin/node agent-daemon.js
 Restart=always
 RestartSec=5
@@ -444,7 +443,7 @@ Expected output: JSON health data and listening socket.
 netstat -tulpn | grep 3100
 
 # Test WebSocket connection
-cd /home/hankh959/projects/noesis-ship/adapters/websocket
+cd /home/hankh959/projects/noesis-ship/packages/relay
 node test-ws.js
 ```
 
@@ -654,7 +653,7 @@ cd /home/hankh959/projects/noesis-ship
 sudo chown -R hankh959:hankh959 .
 
 # Restrict permissions on .env
-chmod 600 adapters/websocket/.env
+chmod 600 packages/relay/.env
 
 # Make scripts executable
 chmod +x scripts/*.sh
@@ -727,7 +726,7 @@ sudo systemctl restart noesis-ship-websocket
 **Missing Dependencies**
 
 ```bash
-cd /home/hankh959/projects/noesis-ship/adapters/websocket
+cd /home/hankh959/projects/noesis-ship
 npm install
 sudo systemctl restart noesis-ship-websocket
 ```
@@ -779,7 +778,7 @@ sudo systemctl restart noesis-ship-websocket
 #### 1. Test Local Connection
 
 ```bash
-cd /home/hankh959/projects/noesis-ship/adapters/websocket
+cd /home/hankh959/projects/noesis-ship/packages/relay
 node test-ws.js
 ```
 
@@ -822,7 +821,7 @@ sudo journalctl -u noesis-ship-agent-daemon -f
 #### 3. Manually Test Agent Daemon
 
 ```bash
-cd /home/hankh959/projects/noesis-ship/adapters/websocket
+cd /home/hankh959/projects/noesis-ship/packages/daemon
 
 # Stop service
 sudo systemctl stop noesis-ship-agent-daemon
@@ -902,7 +901,7 @@ StartLimitIntervalSec=60
 
 ```bash
 # Validate Node.js syntax
-node -c /home/hankh959/projects/noesis-ship/adapters/websocket/server.js
+node -c /home/hankh959/projects/noesis-ship/packages/relay/server.js
 ```
 
 ### Getting Help
@@ -964,7 +963,7 @@ nats-server (port 4222)
 | `/etc/systemd/system/noesis-ship-websocket.service` | WebSocket adapter service |
 | `/etc/systemd/system/noesis-ship-agent-daemon.service` | Agent daemon service |
 | `/home/hankh959/projects/noesis-ship/config/nats-server.conf` | NATS configuration |
-| `/home/hankh959/projects/noesis-ship/adapters/websocket/.env` | Environment variables |
+| `/home/hankh959/projects/noesis-ship/packages/relay/.env` | Environment variables |
 | `/home/hankh959/projects/noesis-ship/logs/nats-server.log` | NATS log file |
 
 ## Next Steps

@@ -25,10 +25,10 @@ git clone https://github.com/hankh95/noesis-ship.git
 cd noesis-ship
 ```
 
-### 2. Set up the WebSocket adapter
+### 2. Set up the WebSocket relay
 
 ```bash
-cd adapters/websocket
+cd packages/relay
 cp .env.example .env
 ```
 
@@ -40,9 +40,10 @@ MACHINE_NAME=MyMachine
 AGENTS=captain:Captain
 ```
 
-Install dependencies and start:
+Install dependencies and start (from repo root):
 
 ```bash
+cd /path/to/noesis-ship
 npm install
 npm start
 ```
@@ -74,7 +75,7 @@ node send.js "Hello from the ship!"
 The agent daemon connects to the WebSocket adapter and spawns Claude Code sessions for incoming messages.
 
 ```bash
-cd adapters/websocket
+cd packages/daemon
 
 # Set up environment
 export CLAUDE_SESSION_DIR=~/.claude/projects/-Users-you-Projects-yourproject
@@ -138,7 +139,7 @@ Create `~/Library/LaunchAgents/com.noesis-ship.websocket.plist`:
         <string>server.js</string>
     </array>
     <key>WorkingDirectory</key>
-    <string>/path/to/noesis-ship/adapters/websocket</string>
+    <string>/path/to/noesis-ship/packages/relay</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>WS_PORT</key>
@@ -172,7 +173,7 @@ After=network.target
 [Service]
 Type=simple
 User=your-user
-WorkingDirectory=/path/to/noesis-ship/adapters/websocket
+WorkingDirectory=/path/to/noesis-ship/packages/relay
 ExecStart=/usr/bin/node server.js
 Restart=always
 RestartSec=5

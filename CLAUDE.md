@@ -137,13 +137,19 @@ noesis-ship/
 │   ├── core/              # EventBus, PubSub, Channels, KV, Object Store
 │   ├── chat/              # Chat service with persistence
 │   └── discovery/         # Service discovery
-├── adapters/              # External protocol adapters
-│   ├── websocket/         # WebSocket relay (Node.js)
-│   │   ├── server.js      # WebSocket relay + Bonjour discovery
-│   │   ├── agent-daemon.js # Claude Code session spawner
-│   │   ├── mcp-server.js  # MCP tool integration
-│   │   └── session-watcher.js # Session transcript streaming
-│   └── mcp/               # (planned)
+├── packages/              # Node.js workspaces (npm workspaces)
+│   ├── relay/             # WebSocket relay server
+│   │   └── server.js      # WebSocket relay + Bonjour discovery
+│   ├── daemon/            # Agent daemon
+│   │   └── agent-daemon.js # Claude Code session spawner
+│   ├── mcp-server/        # MCP tool integration
+│   │   └── mcp-server.js  # Claude Code tools: inbox, send, status
+│   ├── fleet-log/         # Fleet activity logging
+│   │   └── fleet-log-writer.js
+│   └── shared/            # Shared config, NATS helpers, wire protocol
+│       ├── config.js
+│       ├── nats-helpers.js
+│       └── wire-protocol.js
 ├── tests/                 # Python test suite
 ├── kanban-work/           # Work tracking (nautical theme)
 │   ├── expeditions/       # Feature work (EXP-XXX)
@@ -176,27 +182,26 @@ pytest tests/test_core.py # Specific module
 pytest -v                 # Verbose output
 ```
 
-### Node.js (Adapters)
+### Node.js (Packages)
 
 ```bash
-cd adapters/websocket
-npm test
+npm test                  # Run all package tests (from repo root)
+npm test -w packages/relay # Test specific package
 ```
 
 ### Manual Testing
 
-For adapters and end-to-end flows:
+For packages and end-to-end flows:
 
 ```bash
-# Start WebSocket adapter
-cd adapters/websocket
-npm start
+# Start WebSocket relay
+npm start -w packages/relay
 
 # In another terminal, test connection
-node test-ws.js
+node packages/relay/test-ws.js
 
 # Send a test message
-node send.js "Test message"
+node packages/relay/send.js "Test message"
 ```
 
 ## Versioning
@@ -333,10 +338,9 @@ pytest
 pytest -v
 pytest tests/test_core.py
 
-# Node.js (adapters)
-cd adapters/websocket
-npm install
-npm start
+# Node.js (packages — npm workspaces)
+npm install               # From repo root
+npm start -w packages/relay
 npm test
 
 # Git workflow
