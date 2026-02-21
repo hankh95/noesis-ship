@@ -2,22 +2,39 @@
 id: EXP-010
 title: "Centralize noesis-ship: One NATS server for fleet coordination"
 type: expedition
-status: blocked
-priority: medium
+status: ready
+priority: high
 created: 2026-02-21
-assignee: DGX
-blocked_by: "Hardware acquisition (Mac Mini M4)"
+assignee: Mini
 depends_on: []
 tags: [infrastructure, nats, centralization, ships-comm]
 ---
 
 # Centralize noesis-ship: One NATS server for fleet coordination
 
-## Status: BLOCKED — Waiting for Hardware
+## Status: READY — Test on Current Mini M4 (No Purchase Needed!)
 
 **Plan Approved:** 2026-02-21
 **Plan Location:** `/home/hankh959/.claude/plans/floating-crafting-platypus.md`
-**Blocked By:** Hardware acquisition (Mac Mini M4 or Ubuntu mini PC)
+**Assigned To:** Mini agent (macOS infrastructure work)
+**Test Approach:** Use existing Mini M4 as central server
+
+## Test Plan — No New Hardware Required! 🎉
+
+**Decision:** Test centralized architecture on **existing Mini M4** before purchasing dedicated hardware.
+
+**Approach:**
+- Mini runs NATS + WebSocket adapter (central server)
+- Mini also runs agent-daemon (connects to localhost:3100)
+- DGX and M5 connect to Mini's Tailscale IP remotely
+- **Cost:** $0 (use existing hardware)
+- **Time:** ~2 hours (vs 5-7 hours + hardware delivery)
+
+**Benefits:**
+- Immediate validation of architecture
+- Real performance data
+- Ships Comm voice testing today
+- Can decide later if dedicated hardware is worth it
 
 ## Executive Summary
 
@@ -77,44 +94,69 @@ Dedicated Server (Mac Mini M4)
 
 **Total cost:** $660 Year 1 (hardware + electricity)
 
-## Implementation Phases
+## Implementation Phases (Test on Existing Mini)
 
-### Phase 1: Hardware Setup (2-3 hours)
-- Purchase and receive Mac Mini M4
-- Install Tailscale, enable SSH
-- Install Node.js 20+, Python 3.11+, NATS server
+### Phase 1: Mini Setup as Central Server (~1 hour) — **MINI AGENT**
+1. Clone noesis-ship repo (if not present)
+2. Install dependencies: `cd adapters/websocket && npm install`
+3. Configure `.env` for Mini:
+   ```env
+   WS_PORT=3100
+   NATS_URL=nats://localhost:4222
+   MACHINE_NAME=Mini
+   AGENTS=dgx:DGX,mini:Mini,m5:M5,copilot:Copilot
+   CLAUDE_SESSION_DIR=/Users/hankh1844/.claude/projects/-Users-hankh1844-projects-nusy-product-team
+   ```
+4. Start NATS server (launchd or manual)
+5. Start WebSocket adapter (launchd or manual)
+6. Install agent-daemon (EXP-901) connecting to localhost:3100
+7. Get Mini's Tailscale IP: `tailscale ip -4`
 
-### Phase 2: Deploy noesis-ship (1-2 hours)
-- Start NATS server and WebSocket adapter on central server
-- Verify health endpoints
+### Phase 2: Reconfigure Remote Agents (~30 min) — **DGX + M5 AGENTS**
+1. **DGX agent (systemd):**
+   - Update `~/.config/systemd/user/noesis-ship-agent-daemon.service`
+   - Change `BRIDGE_URL=ws://<mini-tailscale-ip>:3100`
+   - Stop local NATS/WebSocket: `systemctl --user stop nats-server noesis-ship-websocket`
+   - Restart agent-daemon: `systemctl --user restart noesis-ship-agent-daemon`
 
-### Phase 3: Reconfigure Agents (1 hour)
-- Update agent-daemon BRIDGE_URL on M5, DGX, Mini
-- Stop local NATS/WebSocket services
-- All agents now connect to central server via Tailscale
+2. **M5 agent (launchd):**
+   - Update `~/Library/LaunchAgents/com.congruentsystems.noesis-ship-agent-daemon.plist`
+   - Change `BRIDGE_URL` to Mini's Tailscale IP
+   - Restart agent-daemon via launchctl
 
-### Phase 4: Verification (45 minutes)
-- Ships Comm iOS: Update bridge URL, test voice commands
-- NATS pub/sub testing
-- Agent-daemon log verification
-- Optional: CarPlay testing
+### Phase 3: Verification (~30 min) — **ALL AGENTS + USER**
+1. **Ships Comm iOS:**
+   - Update bridge URL to Mini's Tailscale IP
+   - Test: "Fleet, status check" (all 3 agents respond)
+   - Test: "DGX, uptime?", "Mini, hello?"
+   - Verify TTS responses
 
-**Total effort:** ~5-7 hours spread over hardware delivery time
+2. **NATS Pub/Sub:**
+   - From any machine: `nats pub --server=nats://<mini-ip>:4222 ship.channel.fleet "Test"`
+   - Verify all agents receive
 
-## Next Steps
+3. **Logs:**
+   - Mini: Check NATS, WebSocket, agent-daemon logs
+   - DGX: `journalctl --user -u noesis-ship-agent-daemon -f`
+   - M5: Launchd logs
 
-1. **Hardware Acquisition:**
-   - Order Mac Mini M4 (~$600) or Ubuntu mini PC (~$400-500)
-   - Wait for delivery
+**Total effort:** ~2 hours (all agents working in parallel)
 
-2. **When Hardware Arrives:**
-   - Follow Phase 1: Hardware Setup from the plan
-   - Continue through Phase 2-4
+## Next Steps — Handoff to Mini Agent
 
-3. **Post-Migration:**
-   - Update Ships Comm iOS app with new bridge URL
-   - Test voice commands: "Fleet, status check", "DGX, uptime?"
-   - Verify all agent-daemons connect to central server
+**Mini agent:** Pick up Phase 1 when ready:
+1. Read `claude-workspace/ACTIVE-CONTEXT.md` for full context
+2. Execute Phase 1: Set up Mini as central server
+3. Coordinate with DGX and M5 for Phase 2 (agent reconfig)
+4. Test with Ships Comm (Phase 3)
+
+**DGX/M5 agents:** Wait for Mini to complete Phase 1, then:
+- DGX: Reconfigure DGX agent-daemon to point to Mini
+- M5: Reconfigure M5 agent-daemon to point to Mini
+
+**After Testing:**
+- If performance is good → Keep Mini as permanent central server ($0 cost)
+- If dedicated hardware needed → We've validated the architecture and know exactly what to buy
 
 ## Related Work
 
