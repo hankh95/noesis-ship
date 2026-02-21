@@ -208,7 +208,7 @@ ship.health                           # Health checks
 The `ship.*` namespace proposed in this doc is now **in production**:
 - `server.js` publishes/subscribes on `ship.channel.{group}` (lines 267, 319)
 - `fleet-log-writer.js` subscribes on `ship.channel.>` (line 209)
-- `agent-daemon.js` communicates via bridge which relays to `ship.channel.*`
+- `agent-daemon.js` sends `broadcast` messages to the bridge via WebSocket; these are relayed to other WebSocket clients only, not published to `ship.channel.*` via NATS
 
 The `nusy.*` namespace remains in the NuSy project for legacy compatibility. Migration to `ship.*` will happen when EXP-895 is implemented.
 
