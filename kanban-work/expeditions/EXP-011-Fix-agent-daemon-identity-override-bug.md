@@ -2,7 +2,7 @@
 id: EXP-011
 title: "Fix agent-daemon identity override bug"
 type: expedition
-status: ready
+status: done
 priority: high
 created: 2026-02-21
 assignee:

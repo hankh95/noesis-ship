@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
- * CarClaw Bridge MCP Server
+ * Noesis Ship MCP Server
  *
- * Exposes the CarClaw bridge to Claude Code via Model Context Protocol.
+ * Exposes the Noesis Ship bridge to Claude Code via Model Context Protocol.
  * Connects to the bridge WebSocket and provides tools for bidirectional
- * communication with CarClaw (the iOS app).
+ * communication with Ships Comm (the iOS app).
  *
  * Tools:
- *   - check_inbox     Read new messages from CarClaw
- *   - send_to_carclaw Send a message to the CarClaw app
+ *   - check_inbox     Read new messages from Ships Comm
+ *   - send_to_carclaw Send a message to the Ships Comm app
  *   - bridge_status   Get bridge connection status
  *
  * Resources:
@@ -116,14 +116,14 @@ function sendToBridge(obj) {
 
 // Logging goes to stderr (stdout is reserved for MCP protocol)
 function log(msg) {
-  process.stderr.write(`[CarClaw MCP] ${msg}\n`);
+  process.stderr.write(`[Noesis MCP] ${msg}\n`);
 }
 
 // ─── MCP Server ─────────────────────────────────────────────────────────────
 
 async function main() {
   const server = new McpServer({
-    name: "carclaw-bridge",
+    name: "noesis-ship",
     version: "1.0.0",
   });
   mcpServerRef = server;
@@ -132,7 +132,7 @@ async function main() {
 
   server.tool(
     "check_inbox",
-    "Read new messages from the CarClaw iOS app. Returns messages sent from the phone since the last check.",
+    "Read new messages from the Ships Comm iOS app. Returns messages sent from the phone since the last check.",
     {},
     async () => {
       const newMessages = inbox.slice(lastReadIndex);
@@ -143,7 +143,7 @@ async function main() {
           content: [
             {
               type: "text",
-              text: "No new messages from CarClaw.",
+              text: "No new messages from Ships Comm.",
             },
           ],
         };
@@ -160,7 +160,7 @@ async function main() {
         content: [
           {
             type: "text",
-            text: `${newMessages.length} new message(s) from CarClaw:\n\n${formatted}`,
+            text: `${newMessages.length} new message(s) from Ships Comm:\n\n${formatted}`,
           },
         ],
       };
@@ -171,9 +171,9 @@ async function main() {
 
   server.tool(
     "send_to_carclaw",
-    "Send a message to the CarClaw iOS app. The message will appear in the Code Companion conversation view.",
+    "Send a message to the Ships Comm iOS app. The message will appear in the Code Companion conversation view.",
     {
-      message: z.string().describe("The message to send to CarClaw"),
+      message: z.string().describe("The message to send to Ships Comm"),
     },
     async ({ message }) => {
       if (!connected) {
@@ -206,7 +206,7 @@ async function main() {
 
       return {
         content: [
-          { type: "text", text: `Sent to CarClaw: "${message}"` },
+          { type: "text", text: `Sent to Ships Comm: "${message}"` },
         ],
       };
     }
@@ -216,7 +216,7 @@ async function main() {
 
   server.tool(
     "bridge_status",
-    "Get the current status of the CarClaw bridge (connected services, active sessions, agent roster).",
+    "Get the current status of the Noesis Ship bridge (connected services, active sessions, agent roster).",
     {},
     async () => {
       if (!connected || !bridgeStatus) {
@@ -235,9 +235,7 @@ async function main() {
       const lines = [
         `Bridge: ${BRIDGE_URL} (connected)`,
         `Machine: ${bridgeStatus.machine || "unknown"}`,
-        `Telegram: ${bridgeStatus.telegram || "unknown"}`,
-        `WhatsApp: ${bridgeStatus.whatsapp || "unknown"}`,
-        `iMessage: ${bridgeStatus.imessage || "unknown"}`,
+        `NATS: ${bridgeStatus.nats || "unknown"}`,
       ];
 
       if (bridgeStatus.agents?.length) {
@@ -306,6 +304,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  process.stderr.write(`[CarClaw MCP] Fatal: ${err.message}\n`);
+  process.stderr.write(`[Noesis MCP] Fatal: ${err.message}\n`);
   process.exit(1);
 });

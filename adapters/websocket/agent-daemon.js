@@ -7,6 +7,7 @@
  *
  * Responds to:
  *   - Human messages (fromId = "carclaw:user") — always respond
+ *   - Kanban events (type = "kanban_event") — notify and optionally auto-review
  *   - Direct agent-to-agent messages (msg.to = this agent's name) — respond
  *   - Undirected agent broadcasts — ignore (prevents infinite loops)
  *   - Own messages (from = this agent) — ignore (prevents echo)
@@ -82,6 +83,9 @@ function connectBridge() {
         // Only adopt bridge machine name if no AGENT_NAME was explicitly configured.
         // Without this guard, remote agents (DGX, M5) get overwritten with "Mini".
         if (msg.machine && !process.env.AGENT_NAME) agentName = msg.machine;
+      } else if (msg.type === "kanban_event") {
+        // Handle kanban events (EXP-009)
+        handleKanbanEvent(msg);
       } else if (msg.type === "message" && msg.group) {
         // Determine if this message is actionable
         const fromSelf = msg.from && msg.from.toLowerCase() === agentName.toLowerCase();
@@ -174,6 +178,37 @@ async function processQueue() {
   // Process next if any
   if (messageQueue.length > 0) {
     processQueue();
+  }
+}
+
+// ─── Kanban Event Handler (EXP-009) ─────────────────────────────────────────
+// Reacts to kanban state changes relayed via the bridge.
+// e.g., item moved to "review" → auto-trigger PR review
+
+function handleKanbanEvent(event) {
+  const item = event.item || {};
+  const repo = event.repo || "unknown";
+
+  log(`Kanban ${event.event}: ${item.id} → ${item.status} (repo: ${repo})`);
+
+  if (event.event === "moved" && item.status === "review") {
+    // Item moved to review — notify and optionally auto-review
+    const notice = `[Kanban] ${item.id} "${item.title}" moved to review by ${item.assignee || "unknown"} in ${repo}`;
+    broadcastMessage(notice, "session:active");
+    log(notice);
+
+    // If this agent is NOT the assignee, it could auto-review
+    // For now, just broadcast — full auto-review can be added later
+    if (item.assignee && item.assignee.toLowerCase() !== agentName.toLowerCase()) {
+      log(`Could auto-review ${item.id} (assigned to ${item.assignee}, I am ${agentName})`);
+    }
+  } else if (event.event === "moved" && item.status === "done") {
+    broadcastMessage(`[Kanban] ${item.id} "${item.title}" is done!`, "session:active");
+  } else if (event.event === "assigned" && item.assignee) {
+    if (item.assignee.toLowerCase() === agentName.toLowerCase()) {
+      broadcastMessage(`[Kanban] ${item.id} "${item.title}" assigned to me`, "session:active");
+      log(`I was assigned ${item.id}`);
+    }
   }
 }
 
