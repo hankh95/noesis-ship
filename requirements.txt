@@ -1,0 +1,2 @@
+# Python tools used by noesis-ship agents
+yurtle-kanban @ git+https://github.com/hankh95/yurtle-kanban.git@v1.10.0
