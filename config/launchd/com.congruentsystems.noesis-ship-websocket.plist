@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!--
+  Noesis Ship — WebSocket Relay Server (macOS launchd)
+
+  Install:
+    cp config/launchd/com.congruentsystems.noesis-ship-websocket.plist ~/Library/LaunchAgents/
+    # Edit paths: replace __HOME__ with your actual home directory
+    launchctl load ~/Library/LaunchAgents/com.congruentsystems.noesis-ship-websocket.plist
+
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.congruentsystems.noesis-ship-websocket.plist
+    rm ~/Library/LaunchAgents/com.congruentsystems.noesis-ship-websocket.plist
+-->
+<dict>
+    <key>Label</key>
+    <string>com.congruentsystems.noesis-ship-websocket</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/node</string>
+        <string>__HOME__/projects/noesis-ship/adapters/websocket/server.js</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>__HOME__/projects/noesis-ship/adapters/websocket</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>NODE_ENV</key>
+        <string>production</string>
+        <key>DOTENV_CONFIG_PATH</key>
+        <string>__HOME__/projects/noesis-ship/adapters/websocket/.env</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>__HOME__/Library/Logs/noesis-ship-websocket.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>__HOME__/Library/Logs/noesis-ship-websocket-error.log</string>
+</dict>
+</plist>

@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<!--
+  Noesis Ship — Agent Daemon (macOS launchd)
+
+  Spawns Claude Code agents in response to messages from the WebSocket bridge.
+
+  Install:
+    cp config/launchd/com.congruentsystems.noesis-ship-agent-daemon.plist ~/Library/LaunchAgents/
+    # Edit: replace __HOME__ with your home dir, __MACHINE__ with machine name
+    launchctl load ~/Library/LaunchAgents/com.congruentsystems.noesis-ship-agent-daemon.plist
+
+  Uninstall:
+    launchctl unload ~/Library/LaunchAgents/com.congruentsystems.noesis-ship-agent-daemon.plist
+    rm ~/Library/LaunchAgents/com.congruentsystems.noesis-ship-agent-daemon.plist
+-->
+<dict>
+    <key>Label</key>
+    <string>com.congruentsystems.noesis-ship-agent-daemon</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/node</string>
+        <string>__HOME__/projects/noesis-ship/adapters/websocket/agent-daemon.js</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>__HOME__/projects/noesis-ship/adapters/websocket</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>BRIDGE_URL</key>
+        <string>ws://localhost:3100</string>
+        <key>PROJECT_DIR</key>
+        <string>__HOME__/projects/nusy-product-team</string>
+        <key>CLAUDE_BIN</key>
+        <string>/opt/homebrew/bin/claude</string>
+        <key>AGENT_NAME</key>
+        <string>__MACHINE__</string>
+        <key>MAX_TURNS</key>
+        <string>10</string>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>__HOME__/Library/Logs/noesis-ship-agent-daemon.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>__HOME__/Library/Logs/noesis-ship-agent-daemon-error.log</string>
+</dict>
+</plist>

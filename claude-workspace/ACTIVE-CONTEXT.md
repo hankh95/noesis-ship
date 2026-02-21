@@ -1,128 +1,82 @@
 # Noesis Ship Active Context
 
 **Updated:** 2026-02-21
-**Agent:** DGX
+**Last Agent:** M5
 
 ---
 
 ## Current Position
 
 **Repository:** hankh95/noesis-ship
-**Status:** Initial setup complete, ready to begin expedition work
+**Status:** EXP-010 centralization — Mini executing Phase 1
 
-### Completed This Session
+### Active Work
 
-1. **Architecture Review** ([docs/architecture-review-dgx.md](docs/architecture-review-dgx.md))
-   - Comprehensive 591-line review of Noesis Ship architecture
-   - NATS core analysis (EventBus, Channels, KV, ObjectStore, PubSub)
-   - WebSocket adapter wire protocol review
-   - Integration strategy with nusy-product-team
-   - CarClaw migration path (OpenClaw → Noesis Ship)
+**EXP-010: Centralize noesis-ship on Mini M4**
+- **Status:** In progress — Mini is setting up as central server
+- **Assignee:** Mini agent
+- **What:** One central NATS server on Mini, all agents connect via Tailscale
+- **Expedition:** `kanban-work/expeditions/EXP-010-Centralize-noesis-ship-One-NATS-server-for-fleet-c.md`
 
-2. **yurtle-kanban Integration**
-   - Added `.kanban/config.yaml` with proper scan paths
-   - Created `kanban-work/expeditions/` directory structure
-   - Matching nusy-product-team conventions
+**FEAT-016: Cloudflare Tunnel (Invisible Remote Connectivity)**
+- **Status:** Code complete, not yet deployed
+- **What:** `wss://ship.congruentsys.com` relay URL, auto-discovered by Ships Comm
+- **Server:** `RELAY_URL` env var in server.js status payload
+- **Installer:** `scripts/install-cloudflared.sh`
+- **Config template:** `config/cloudflared/config.yml`
 
-3. **Expedition Creation** (7 expeditions)
-   - EXP-001: Wire NATS to WebSocket adapter for channel relay
-   - EXP-002: Add CLAUDE.md with agent identity and contribution guidelines
-   - EXP-003: Document DGX deployment with systemd services
-   - EXP-004: Add CI/CD pipeline with GitHub Actions
-   - EXP-005: Polish MCP server with tool catalog documentation
-   - EXP-006: Create ship templates CLI (noesis-ship init)
-   - EXP-007: Add HTTP/SSE adapter for dashboard integration
+**EXP-009: Kanban NATS webhook**
+- **Status:** PR #3 open, ready to merge
+- **Branch:** `exp-009-kanban-nats-webhook`
 
-4. **Project Files**
-   - Added CLAUDE.md (project-specific Claude Code instructions)
-   - Created this ACTIVE-CONTEXT.md for session continuity
+### Completed Expeditions
 
-### Integration with nusy-product-team
-
-Work has been split between repositories:
-- **noesis-ship**: 7 expeditions for platform development
-- **nusy-product-team**: 5 expeditions (EXP-893 through EXP-897) for integration
-
-See [NOESIS-SHIP-INTEGRATION-PLAN.md](https://github.com/hankh95/nusy-product-team/blob/main/claude-workspace/NOESIS-SHIP-INTEGRATION-PLAN.md) in nusy-product-team repository for full integration plan.
+| Expedition | Status | Notes |
+|------------|--------|-------|
+| EXP-001 | done | NATS ↔ WebSocket relay (PR #1 merged) |
+| EXP-002 | done | CLAUDE.md (merged to main) |
+| EXP-003 | done | DGX deployment docs (PR #2 merged) |
+| EXP-009 | review | Kanban NATS webhook (PR #3 open) |
+| EXP-010 | in-progress | Centralize on Mini M4 |
 
 ---
 
-## Agent Assignments
+## Mini Setup Instructions (EXP-010 Phase 1)
 
-| Expedition | Assignee | Status | Notes |
-|------------|----------|--------|-------|
-| EXP-002 | Unassigned | backlog | Quickest win - add CLAUDE.md |
-| EXP-001 | Unassigned | backlog | Critical path - NATS to WebSocket |
-| EXP-003 | Unassigned | backlog | Critical path - deployment docs |
-| EXP-004-007 | Unassigned | backlog | Later phase work |
+**Config files now available:**
+- `config/launchd/com.congruentsystems.nats.plist` — NATS server
+- `config/launchd/com.congruentsystems.noesis-ship-websocket.plist` — WebSocket relay
+- `config/launchd/com.congruentsystems.noesis-ship-agent-daemon.plist` — Agent daemon
+- `config/nats-server.conf` — NATS server config (replace `__HOME__` placeholders)
 
-**Recommended Next:** EXP-002 (Add CLAUDE.md) — quickest expedition to complete, unblocks contributors.
+**Prerequisites:**
+```bash
+brew install nats-server
+brew install node  # if not installed
+```
 
----
+**Quick start:**
+```bash
+git clone https://github.com/hankh95/noesis-ship.git
+cd noesis-ship/adapters/websocket && npm install
+# Create .env (see EXP-010 expedition for template)
+# Replace __HOME__ in config files with actual home dir
+# Replace __MACHINE__ with machine name (e.g., Mini)
+nats-server -c ../../config/nats-server.conf &
+node server.js
+```
 
-## Recent Voyages
-
-### 2026-02-21 — DGX — Repository Setup
-
-**What was completed:**
-- Cloned hankh95/noesis-ship to `/home/hankh959/projects/noesis-ship`
-- Conducted comprehensive architecture review
-- Added yurtle-kanban integration with proper directory structure
-- Created 7 expeditions for platform development
-- Added CLAUDE.md and ACTIVE-CONTEXT.md to repository root
-
-**Key decisions:**
-- Use `kanban-work/expeditions/` directory structure (matches nusy-product-team)
-- Split work between noesis-ship (platform) and nusy-product-team (integration)
-- Priority order: EXP-002 (CLAUDE.md) → EXP-001 (NATS to WebSocket) → EXP-003 (deployment docs)
-
-**Files created/modified:**
-- `docs/architecture-review-dgx.md` (new)
-- `.kanban/config.yaml` (new)
-- `kanban-work/expeditions/EXP-001.md` through `EXP-007.md` (new)
-- `CLAUDE.md` (new)
-- `claude-workspace/ACTIVE-CONTEXT.md` (new)
-
-**What next session should do:**
-- Begin with EXP-002 (Add CLAUDE.md with agent identity)
-- After EXP-002: Tackle EXP-001 (Wire NATS to WebSocket adapter) — critical path
-- After EXP-001: EXP-003 (Document DGX deployment) — critical path
-
-**Blockers:** None
-
----
-
-## Mini-Plans
-
-### EXP-002: Add CLAUDE.md (Ready)
-
-**Status:** Ready to start
-**Estimated Effort:** 1-2 hours
-**Dependencies:** None
-
-**Steps:**
-1. Review CLAUDE.md structure from nusy-product-team
-2. Adapt for noesis-ship project (remove being-specific content)
-3. Add noesis-ship specific instructions:
-   - Architecture overview (NATS core + adapters)
-   - Component structure (noesis_ship/, adapters/)
-   - Development workflow (Python core, Node.js adapters)
-   - Testing strategy (pytest for Python, manual for adapters)
-4. Document expedition workflow with yurtle-kanban
-5. Add quick reference section
-6. Commit and push
-
-**Success Criteria:**
-- CLAUDE.md exists in repository root
-- Contributors understand project structure
-- yurtle-kanban workflow documented
+**After services are running:**
+1. Get Tailscale IP: `tailscale ip -4`
+2. Share IP with DGX and M5 so they can reconfigure their agent-daemons
+3. Test: Ships Comm connects to Mini's bridge URL
 
 ---
 
 ## Context Notes
 
-- **Noesis Ship Purpose:** Pluggable multi-agent communication platform with NATS core
-- **Architecture:** NATS core (Python) + adapters (WebSocket, MCP, HTTP/SSE in Node.js)
-- **Integration Goal:** Unified communications for NuSy beings, LLM agents, and humans
-- **Critical Path:** EXP-001 (NATS to WebSocket) → EXP-003 (deployment docs) → nusy-product-team integration
-- **Related Work:** nusy-product-team has 5 integration expeditions (EXP-893 through EXP-897)
+- **Architecture:** NATS core (Python) + WebSocket adapter (Node.js) + agent daemon + MCP server
+- **DGX:** noesis-ship deployed with 3 systemd services (will reconfigure to point to Mini)
+- **M5:** Running noesis-ship locally (will reconfigure to point to Mini)
+- **Ships Comm:** iOS/CarPlay voice app, protocol-compatible with noesis-ship (zero code changes)
+- **Wire protocol:** Same as old carclaw-bridge — JSON over WebSocket
