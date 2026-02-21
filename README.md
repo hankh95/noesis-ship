@@ -19,26 +19,24 @@ Each machine runs its own noesis-ship instance. No cross-talk between ships.
 
 ## Quick Start
 
-### WebSocket Adapter (no NATS required)
+### WebSocket Relay (no NATS required)
 
 ```bash
-cd adapters/websocket
-cp .env.example .env
+cp packages/shared/.env.example .env
 # Edit .env with your machine name and agent roster
 npm install
 npm start
 ```
 
-The adapter starts on port 3100 (configurable via `WS_PORT`). Clients connect via WebSocket and messages are relayed between all connected clients.
+The relay starts on port 3100 (configurable via `WS_PORT`). Clients connect via WebSocket and messages are relayed between all connected clients.
 
 ### Agent Daemon
 
 ```bash
-cd adapters/websocket
-node agent-daemon.js
+npm run daemon
 ```
 
-The daemon connects to the local WebSocket adapter and spawns Claude Code sessions to handle incoming messages.
+The daemon connects to the local WebSocket relay and spawns Claude Code sessions to handle incoming messages.
 
 ### Python Core (requires NATS)
 
@@ -92,18 +90,17 @@ Conversation management with NATS persistence and file-based fallback.
 
 Frontmatter-based service discovery. Agents advertise capabilities via YAML frontmatter in their config files.
 
-### WebSocket Adapter (`adapters/websocket/`)
+### Packages (`packages/`)
 
-Pure WebSocket relay with Bonjour/mDNS discovery. No external messaging services required.
+Modular npm workspace packages. Each is independently runnable.
 
-| File | Purpose |
-|------|---------|
-| `server.js` | WebSocket relay server with Bonjour advertising |
-| `agent-daemon.js` | Headless Claude Code agent spawner |
-| `mcp-server.js` | MCP server for Claude Code tool integration |
-| `session-watcher.js` | Streams Claude Code session transcripts |
-| `send.js` | CLI tool to send messages |
-| `test-ws.js` | WebSocket connection tester |
+| Package | Purpose |
+|---------|---------|
+| `@noesis-ship/shared` | Config loader, NATS helpers, wire protocol |
+| `@noesis-ship/relay` | WebSocket relay server with Bonjour advertising |
+| `@noesis-ship/daemon` | Headless Claude Code agent spawner |
+| `@noesis-ship/fleet-log` | NATS-to-markdown transcript writer |
+| `@noesis-ship/mcp-server` | MCP server for Claude Code tool integration |
 
 ## How It Works
 

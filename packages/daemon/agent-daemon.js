@@ -32,14 +32,16 @@
 const { spawn } = require("child_process");
 const path = require("path");
 const WebSocket = require("ws");
+const { loadConfig, isFromSelf, isFromHuman, isDirectedTo, isFromAgent } = require("@noesis-ship/shared");
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
-const BRIDGE_URL = process.env.BRIDGE_URL || "ws://localhost:3100";
-const PROJECT_DIR = process.env.PROJECT_DIR || path.join(require("os").homedir(), "Projects/carclaw");
-const CLAUDE_BIN = process.env.CLAUDE_BIN || path.join(__dirname, "node_modules/.bin/claude");
-const MAX_TURNS = parseInt(process.env.MAX_TURNS || "10", 10);
-const RECONNECT_INTERVAL = 3000;
+const config = loadConfig();
+const BRIDGE_URL = config.bridgeUrl;
+const PROJECT_DIR = config.projectDir;
+const CLAUDE_BIN = config.claudeBin;
+const MAX_TURNS = config.maxTurns;
+const RECONNECT_INTERVAL = config.reconnectInterval;
 
 // ─── State ──────────────────────────────────────────────────────────────────
 
@@ -87,11 +89,11 @@ function connectBridge() {
         // Handle kanban events (EXP-009)
         handleKanbanEvent(msg);
       } else if (msg.type === "message" && msg.group) {
-        // Determine if this message is actionable
-        const fromSelf = msg.from && msg.from.toLowerCase() === agentName.toLowerCase();
-        const fromHuman = msg.fromId === "carclaw:user";
-        const directedToMe = msg.to && msg.to.toLowerCase() === agentName.toLowerCase();
-        const fromAgent = msg.fromId && msg.fromId.startsWith("agent:");
+        // Determine if this message is actionable (using @noesis-ship/shared helpers)
+        const fromSelf = isFromSelf(msg, agentName);
+        const fromHuman = isFromHuman(msg);
+        const directedToMe = isDirectedTo(msg, agentName);
+        const fromAgent = isFromAgent(msg);
 
         if (fromSelf) {
           // Ignore own messages (prevent echo)
