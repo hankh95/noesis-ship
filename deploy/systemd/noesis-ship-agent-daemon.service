@@ -8,7 +8,7 @@ Wants=noesis-ship-websocket.service
 Type=simple
 User=__USER__
 Group=__USER__
-WorkingDirectory=__HOME__/projects/noesis-ship/adapters/websocket
+WorkingDirectory=__HOME__/projects/noesis-ship/packages/daemon
 ExecStart=/usr/bin/node agent-daemon.js
 Restart=always
 RestartSec=5
@@ -19,8 +19,8 @@ SyslogIdentifier=noesis-ship-agent
 # Environment variables
 Environment=NODE_ENV=production
 Environment=BRIDGE_URL=ws://localhost:3100
-Environment=PROJECT_DIR=__HOME__/projects/carclaw
-Environment=CLAUDE_BIN=/usr/local/bin/claude
+Environment=PROJECT_DIR=__HOME__/projects/nusy-product-team
+Environment=CLAUDE_BIN=__HOME__/.local/bin/claude
 Environment=AGENT_NAME=DGX
 Environment=MAX_TURNS=10
 

@@ -1,5 +1,5 @@
 [Unit]
-Description=Noesis Ship WebSocket Adapter
+Description=Noesis Ship WebSocket Relay
 Documentation=https://github.com/hankh95/noesis-ship
 After=network.target nats-server.service
 Wants=nats-server.service
@@ -8,7 +8,7 @@ Wants=nats-server.service
 Type=simple
 User=__USER__
 Group=__USER__
-WorkingDirectory=__HOME__/projects/noesis-ship/adapters/websocket
+WorkingDirectory=__HOME__/projects/noesis-ship/packages/relay
 ExecStart=/usr/bin/node server.js
 Restart=always
 RestartSec=5
