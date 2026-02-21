@@ -178,21 +178,21 @@ project_dir: /Users/captain/Projects/nusy-product-team
 
 ### 4. WebSocket Adapter
 
-**Location:** `adapters/websocket/`
+**Location:** `packages/relay/`, `packages/daemon/`, `packages/mcp-server/`
 
 **Purpose:** Bridge between WebSocket clients (iOS, web) and NATS
 
 #### Components
 
-| File | Purpose |
-|------|---------|
-| `server.js` | WebSocket relay server with Bonjour/mDNS discovery |
-| `agent-daemon.js` | Spawns Claude Code sessions for incoming messages |
-| `mcp-server.js` | MCP server for Claude Code tool integration |
-| `session-watcher.js` | Streams Claude Code conversation transcripts to clients |
-| `groups.js` | Group/channel management |
-| `send.js` | CLI tool to send test messages |
-| `test-ws.js` | WebSocket connection tester |
+| File | Package | Purpose |
+|------|---------|---------|
+| `server.js` | `packages/relay/` | WebSocket relay server with Bonjour/mDNS discovery |
+| `session-watcher.js` | `packages/relay/` | Streams Claude Code conversation transcripts to clients |
+| `agent-daemon.js` | `packages/daemon/` | Spawns Claude Code sessions for incoming messages |
+| `mcp-server.js` | `packages/mcp-server/` | MCP server for Claude Code tool integration |
+| `groups.js` | `packages/relay/` | Group/channel management |
+| `send.js` | `packages/relay/` | CLI tool to send test messages |
+| `test-ws.js` | `packages/relay/` | WebSocket connection tester |
 
 #### Wire Protocol
 

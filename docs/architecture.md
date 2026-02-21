@@ -91,15 +91,15 @@ Large file storage via NATS Object Store.
 
 Adapters bridge external protocols to the NATS core.
 
-### WebSocket Adapter (`adapters/websocket/`)
+### WebSocket Adapter (`packages/relay/`)
 
 The primary adapter for real-time client communication. Runs standalone without NATS (Day 1 mode) or bridges WebSocket to NATS (Day 2+).
 
 Components:
-- **server.js** — WebSocket relay with Bonjour/mDNS discovery
-- **agent-daemon.js** — Spawns Claude Code sessions for incoming messages
-- **mcp-server.js** — MCP tool integration for Claude Code
-- **session-watcher.js** — Streams Claude Code conversation transcripts
+- **`packages/relay/server.js`** — WebSocket relay with Bonjour/mDNS discovery
+- **`packages/daemon/agent-daemon.js`** — Spawns Claude Code sessions for incoming messages
+- **`packages/mcp-server/mcp-server.js`** — MCP tool integration for Claude Code
+- **`packages/relay/session-watcher.js`** — Streams Claude Code conversation transcripts
 
 ### MCP Adapter
 
