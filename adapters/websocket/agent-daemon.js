@@ -79,7 +79,9 @@ function connectBridge() {
 
       if (msg.type === "status") {
         bridgeStatus = msg;
-        if (msg.machine) agentName = msg.machine;
+        // Only adopt bridge machine name if no AGENT_NAME was explicitly configured.
+        // Without this guard, remote agents (DGX, M5) get overwritten with "Mini".
+        if (msg.machine && !process.env.AGENT_NAME) agentName = msg.machine;
       } else if (msg.type === "message" && msg.group) {
         // Determine if this message is actionable
         const fromSelf = msg.from && msg.from.toLowerCase() === agentName.toLowerCase();
