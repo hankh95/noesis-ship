@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * CarClaw Agent Daemon
+ * Noesis Ship Agent Daemon
  *
  * Headless Claude Code agent that monitors the bridge for incoming
- * CarClaw messages and responds autonomously — no keyboard needed.
+ * Ships Comm messages and responds autonomously — no keyboard needed.
  *
  * Flow:
  *   1. Connects to bridge WebSocket
@@ -74,6 +74,9 @@ function connectBridge() {
       if (msg.type === "status") {
         bridgeStatus = msg;
         if (msg.machine) agentName = msg.machine;
+      } else if (msg.type === "kanban_event") {
+        // Handle kanban events (EXP-009)
+        handleKanbanEvent(msg);
       } else if (msg.type === "message" && msg.fromId === "carclaw:user") {
         // Respond to all groups — both Code Companion (session:*) and agent chat (tg:*, etc.)
         if (msg.group) {
@@ -149,6 +152,37 @@ async function processQueue() {
   // Process next if any
   if (messageQueue.length > 0) {
     processQueue();
+  }
+}
+
+// ─── Kanban Event Handler (EXP-009) ─────────────────────────────────────────
+// Reacts to kanban state changes relayed via the bridge.
+// e.g., item moved to "review" → auto-trigger PR review
+
+function handleKanbanEvent(event) {
+  const item = event.item || {};
+  const repo = event.repo || "unknown";
+
+  log(`Kanban ${event.event}: ${item.id} → ${item.status} (repo: ${repo})`);
+
+  if (event.event === "moved" && item.status === "review") {
+    // Item moved to review — notify and optionally auto-review
+    const notice = `[Kanban] ${item.id} "${item.title}" moved to review by ${item.assignee || "unknown"} in ${repo}`;
+    broadcastMessage(notice, "session:active");
+    log(notice);
+
+    // If this agent is NOT the assignee, it could auto-review
+    // For now, just broadcast — full auto-review can be added later
+    if (item.assignee && item.assignee.toLowerCase() !== agentName.toLowerCase()) {
+      log(`Could auto-review ${item.id} (assigned to ${item.assignee}, I am ${agentName})`);
+    }
+  } else if (event.event === "moved" && item.status === "done") {
+    broadcastMessage(`[Kanban] ${item.id} "${item.title}" is done!`, "session:active");
+  } else if (event.event === "assigned" && item.assignee) {
+    if (item.assignee.toLowerCase() === agentName.toLowerCase()) {
+      broadcastMessage(`[Kanban] ${item.id} "${item.title}" assigned to me`, "session:active");
+      log(`I was assigned ${item.id}`);
+    }
   }
 }
 
@@ -240,7 +274,7 @@ function handleCarClawMessage(msg) {
 
 // ─── Start ──────────────────────────────────────────────────────────────────
 
-log("Starting CarClaw Agent Daemon...");
+log("Starting Noesis Ship Agent Daemon...");
 log(`Project: ${PROJECT_DIR}`);
 log(`Claude: ${CLAUDE_BIN}`);
 log(`Bridge: ${BRIDGE_URL}`);

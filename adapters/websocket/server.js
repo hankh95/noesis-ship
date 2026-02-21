@@ -68,9 +68,9 @@ async function initNATS() {
     console.log(`[NATS] Connected to ${natsConnection.getServer()}`);
 
     // Subscribe to channel messages from NATS
-    const sub = natsConnection.subscribe("ship.channel.>");
+    const channelSub = natsConnection.subscribe("ship.channel.>");
     (async () => {
-      for await (const msg of sub) {
+      for await (const msg of channelSub) {
         try {
           const data = sc.decode(msg.data);
           const parsed = JSON.parse(data);
@@ -80,6 +80,22 @@ async function initNATS() {
           broadcastToClients(parsed);
         } catch (err) {
           console.error(`[NATS] Error processing message:`, err.message);
+        }
+      }
+    })();
+
+    // Subscribe to kanban events from NATS (EXP-009)
+    const kanbanSub = natsConnection.subscribe("ship.kanban.>");
+    (async () => {
+      for await (const msg of kanbanSub) {
+        try {
+          const data = sc.decode(msg.data);
+          const parsed = JSON.parse(data);
+          console.log(`[NATS] Kanban event: ${msg.subject}`, parsed.item?.id || "");
+          // Relay kanban events to all WebSocket clients
+          broadcastToClients(parsed);
+        } catch (err) {
+          console.error(`[NATS] Error processing kanban event:`, err.message);
         }
       }
     })();
@@ -366,12 +382,12 @@ function startBonjour() {
 
   bonjour.publish({
     name: `Noesis Ship (${hostname})`,
-    type: "carclaw",
+    type: "noesis-ship",
     port: parseInt(WS_PORT, 10),
     txt: { version: "1", hostname },
   });
 
-  console.log(`[Bonjour] Advertising _carclaw._tcp on port ${WS_PORT}`);
+  console.log(`[Bonjour] Advertising _noesis-ship._tcp on port ${WS_PORT}`);
 }
 
 // ─── Session Inbox ───────────────────────────────────────────────────────────
