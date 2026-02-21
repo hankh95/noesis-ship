@@ -1,7 +1,7 @@
 # Noesis Ship Active Context
 
 **Updated:** 2026-02-21
-**Last Agent:** Mini
+**Last Agent:** M5
 
 ---
 
@@ -51,22 +51,15 @@ See [EXP-010](https://github.com/hankh95/noesis-ship/blob/main/kanban-work/exped
 
 ### Active Work
 
-**EXP-010: Centralize noesis-ship on Mini M4**
-- **Status:** Phase 2 in progress — Mini ✅ + DGX ✅, M5 pending
-- **Assignee:** Multi-agent (Mini complete, DGX complete, M5 next)
-- **What:** One central NATS server on Mini, all agents connect via Tailscale
-- **Expedition:** `kanban-work/expeditions/EXP-010-Centralize-noesis-ship-One-NATS-server-for-fleet-c.md`
+**EXP-013: Command Deck v2 as Noesis-Ship Plugin** — Assigned to DGX, backlog
+**EXP-014: Evaluate Yurtle-Kanban Centralization** — Assigned to DGX, backlog
+**EXP-015: Web Chat Interface for Fleet Communication** — Assigned to DGX, backlog
+**EXP-016: Being Integration with Noesis-Ship Bridge** — Assigned to DGX, **critical**
 
 **FEAT-016: Cloudflare Tunnel (Invisible Remote Connectivity)**
 - **Status:** Code complete, not yet deployed
 - **What:** `wss://ship.congruentsys.com` relay URL, auto-discovered by Ships Comm
-- **Server:** `RELAY_URL` env var in server.js status payload
 - **Installer:** `scripts/install-cloudflared.sh`
-- **Config template:** `config/cloudflared/config.yml`
-
-**EXP-009: Kanban NATS webhook**
-- **Status:** PR #3 open, ready to merge
-- **Branch:** `exp-009-kanban-nats-webhook`
 
 ### Completed Expeditions
 
@@ -75,8 +68,12 @@ See [EXP-010](https://github.com/hankh95/noesis-ship/blob/main/kanban-work/exped
 | EXP-001 | done | NATS ↔ WebSocket relay (PR #1 merged) |
 | EXP-002 | done | CLAUDE.md (merged to main) |
 | EXP-003 | done | DGX deployment docs (PR #2 merged) |
-| EXP-009 | review | Kanban NATS webhook (PR #3 open) |
-| EXP-010 | in-progress | Centralize on Mini M4 (Phase 2: ✅ ALL connected, Phase 3 testing) |
+| EXP-004 | done | CI/CD pipeline — GitHub Actions (Python + Node + Lint) |
+| EXP-005 | done | MCP server polished — rebrand, send_to_agent tool, agent inbox |
+| EXP-008 | done | Yurtle-ify docs and templates — frontmatter added |
+| EXP-009 | done | Kanban NATS webhook (PR #3 merged with conflict resolution) |
+| EXP-010 | done | Centralize on Mini M4 — all agents connected |
+| EXP-011 | done | Agent identity override bug (duplicate of EXP-012) |
 | EXP-012 | done | Agent name overwrite fix (`!process.env.AGENT_NAME` guard) |
 
 ---
