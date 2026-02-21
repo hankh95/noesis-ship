@@ -93,6 +93,12 @@ async function testNATSIntegration() {
   process.exit(0);
 }
 
+// Timeout: fail if tests don't complete within 10 seconds
+setTimeout(() => {
+  console.error("Test timed out after 10s");
+  process.exit(1);
+}, 10000);
+
 // Run test
 testNATSIntegration().catch((err) => {
   console.error("Test failed:", err);

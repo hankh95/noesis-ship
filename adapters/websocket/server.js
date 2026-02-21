@@ -74,6 +74,8 @@ async function initNATS() {
         try {
           const data = sc.decode(msg.data);
           const parsed = JSON.parse(data);
+          // Skip messages that originated from this server to prevent echo loops
+          if (parsed.origin === MACHINE_NAME) continue;
           // Relay NATS messages to all WebSocket clients
           broadcastToClients(parsed);
         } catch (err) {
@@ -238,11 +240,11 @@ async function handleSend(msg, senderWs) {
     timestamp: new Date().toISOString(),
   };
 
-  // Publish to NATS if connected
+  // Publish to NATS if connected (tag with origin to prevent echo loops)
   if (natsConnection && group) {
     try {
       const subject = `ship.channel.${group}`;
-      natsConnection.publish(subject, sc.encode(JSON.stringify(messagePayload)));
+      natsConnection.publish(subject, sc.encode(JSON.stringify({ ...messagePayload, origin: MACHINE_NAME })));
       console.log(`[NATS] Published to ${subject}`);
     } catch (err) {
       console.error(`[NATS] Publish error:`, err.message);
@@ -286,11 +288,11 @@ async function handleAgentMessage(msg, senderWs) {
     timestamp,
   };
 
-  // Publish to NATS if connected
+  // Publish to NATS if connected (tag with origin to prevent echo loops)
   if (natsConnection && group) {
     try {
       const subject = `ship.channel.${group}`;
-      natsConnection.publish(subject, sc.encode(JSON.stringify(bridgeMessage)));
+      natsConnection.publish(subject, sc.encode(JSON.stringify({ ...bridgeMessage, origin: MACHINE_NAME })));
       console.log(`[NATS] Published agent message to ${subject}`);
     } catch (err) {
       console.error(`[NATS] Publish error:`, err.message);
