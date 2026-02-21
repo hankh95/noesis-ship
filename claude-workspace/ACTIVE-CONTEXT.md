@@ -183,7 +183,90 @@ Check logs to confirm connection to Mini's central server.
 
 ---
 
+## Agent-to-Agent Comms — Now Live (Pull Required!)
+
+**Updated:** 2026-02-21 by Mini
+**File changed:** `adapters/websocket/agent-daemon.js`
+**Action required:** DGX and M5 — `git pull origin main` and restart your agent-daemon.
+
+### What Changed
+
+The agent-daemon previously only responded to human/CarClaw messages (`fromId === "carclaw:user"`). It now supports **full agent-to-agent messaging** via NATS.
+
+### Message Routing Rules
+
+| Message Type | `fromId` | `to` field | Daemon Action |
+|-------------|----------|------------|---------------|
+| Human message | `carclaw:user` | any | **Respond** (always) |
+| Directed agent message | `agent:mini` | `DGX` | **Respond** (addressed to me) |
+| Undirected agent broadcast | `agent:mini` | (none) | **Ignore** (loop prevention) |
+| Own message | `agent:dgx` | any | **Ignore** (echo prevention) |
+
+### How to Send Agent-to-Agent Messages
+
+```bash
+# Mini asks DGX a question (DGX daemon will respond)
+curl -s -X POST http://localhost:3102/message \
+  -H "Content-Type: application/json" \
+  -d '{"group":"fleet","from":"Mini","message":"What GPU memory is available?","to":"DGX"}'
+
+# DGX asks Mini a question (Mini daemon will respond)
+curl -s -X POST http://100.113.140.45:3102/message \
+  -H "Content-Type: application/json" \
+  -d '{"group":"fleet","from":"DGX","message":"How many beings are trained?","to":"Mini"}'
+
+# Broadcast to fleet (NO agent auto-responds — only humans see it)
+curl -s -X POST http://100.113.140.45:3102/message \
+  -H "Content-Type: application/json" \
+  -d '{"group":"fleet","from":"Mini","message":"Training complete for santiago-toddler-v12.1"}'
+```
+
+### Loop Prevention
+
+The key design decision: **undirected agent broadcasts are ignored by daemons.** This prevents:
+- Agent A sends to fleet → Agent B responds → Agent A responds to that → infinite loop
+
+Only **directed messages** (`"to": "DGX"`) trigger a daemon response. The reply is also directed back to the original sender, so it doesn't cascade.
+
+### Restart Instructions
+
+After `git pull origin main`:
+
+**DGX:**
+```bash
+systemctl --user restart noesis-ship-agent-daemon
+```
+
+**M5:**
+```bash
+launchctl unload ~/Library/LaunchAgents/com.congruentsystems.noesis-ship-agent-daemon.plist
+launchctl load ~/Library/LaunchAgents/com.congruentsystems.noesis-ship-agent-daemon.plist
+```
+
+---
+
 ## Recent Voyages
+
+### 2026-02-21 — Mini — Agent-to-Agent Comms Fix
+
+**What was completed:**
+- Expanded agent-daemon.js message filter from human-only to human + directed agent messages
+- Added loop prevention (ignore undirected agent broadcasts, ignore own messages)
+- Agent responses to other agents are directed back (`to` field) to prevent cascade
+- Renamed `handleCarClawMessage` → `handleMessage`, updated `fromId` to use agent name
+- Updated header docs to describe the new routing rules
+
+**Files modified:**
+- `adapters/websocket/agent-daemon.js`
+- `kanban-work/expeditions/EXP-010-*.md` (status → in-progress)
+- `claude-workspace/ACTIVE-CONTEXT.md` (this file)
+
+**What next session should do:**
+- DGX + M5: `git pull` and restart agent-daemons to pick up the change
+- Test: Mini sends directed message to DGX, verify DGX daemon responds
+- Test: Agent broadcast does NOT trigger daemon responses (loop prevention)
+
+---
 
 ### 2026-02-21 — DGX — EXP-010 Phase 2 Complete ✅
 

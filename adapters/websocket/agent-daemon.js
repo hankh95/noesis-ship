@@ -1,15 +1,21 @@
 #!/usr/bin/env node
 /**
- * CarClaw Agent Daemon
+ * Noesis Ship Agent Daemon
  *
  * Headless Claude Code agent that monitors the bridge for incoming
- * CarClaw messages and responds autonomously — no keyboard needed.
+ * messages and responds autonomously — no keyboard needed.
+ *
+ * Responds to:
+ *   - Human messages (fromId = "carclaw:user") — always respond
+ *   - Direct agent-to-agent messages (msg.to = this agent's name) — respond
+ *   - Undirected agent broadcasts — ignore (prevents infinite loops)
+ *   - Own messages (from = this agent) — ignore (prevents echo)
  *
  * Flow:
  *   1. Connects to bridge WebSocket
- *   2. Listens for messages from CarClaw (fromId = "carclaw:user")
+ *   2. Listens for actionable messages (human or directed agent-to-agent)
  *   3. Spawns `claude -p` with the message, pointed at the project dir
- *   4. Streams the response back to CarClaw via the bridge
+ *   4. Posts the response back to the bridge
  *
  * Usage:
  *   node agent-daemon.js
@@ -74,11 +80,26 @@ function connectBridge() {
       if (msg.type === "status") {
         bridgeStatus = msg;
         if (msg.machine) agentName = msg.machine;
-      } else if (msg.type === "message" && msg.fromId === "carclaw:user") {
-        // Respond to all groups — both Code Companion (session:*) and agent chat (tg:*, etc.)
-        if (msg.group) {
-          log(`CarClaw message [${msg.group}]: ${msg.message.substring(0, 80)}`);
+      } else if (msg.type === "message" && msg.group) {
+        // Determine if this message is actionable
+        const fromSelf = msg.from && msg.from.toLowerCase() === agentName.toLowerCase();
+        const fromHuman = msg.fromId === "carclaw:user";
+        const directedToMe = msg.to && msg.to.toLowerCase() === agentName.toLowerCase();
+        const fromAgent = msg.fromId && msg.fromId.startsWith("agent:");
+
+        if (fromSelf) {
+          // Ignore own messages (prevent echo)
+        } else if (fromHuman) {
+          // Always respond to human messages
+          log(`Human message [${msg.group}]: ${msg.message.substring(0, 80)}`);
           enqueueMessage(msg);
+        } else if (directedToMe) {
+          // Respond to direct agent-to-agent messages (@Mini, @DGX, etc.)
+          log(`Agent message from ${msg.from} [${msg.group}]: ${msg.message.substring(0, 80)}`);
+          enqueueMessage(msg);
+        } else if (fromAgent) {
+          // Ignore undirected agent broadcasts (prevent infinite loops)
+          log(`Ignoring broadcast from ${msg.from} (not directed to ${agentName})`);
         }
       }
     } catch {
@@ -111,19 +132,21 @@ function sendToBridge(obj) {
   ws.send(JSON.stringify(obj));
 }
 
-function broadcastMessage(text, group) {
-  sendToBridge({
-    type: "broadcast",
-    payload: {
-      type: "message",
-      group: group || "session:active",
-      from: agentName,
-      fromId: "agent:daemon",
-      message: text,
-      timestamp: new Date().toISOString(),
-      sessionMessage: true,
-    },
-  });
+function broadcastMessage(text, group, replyTo) {
+  const payload = {
+    type: "message",
+    group: group || "session:active",
+    from: agentName,
+    fromId: `agent:${agentName.toLowerCase()}`,
+    message: text,
+    timestamp: new Date().toISOString(),
+    sessionMessage: true,
+  };
+  // Direct reply: set `to` so only the original sender's daemon picks it up
+  if (replyTo) {
+    payload.to = replyTo;
+  }
+  sendToBridge({ type: "broadcast", payload });
 }
 
 // ─── Message Queue ──────────────────────────────────────────────────────────
@@ -139,7 +162,7 @@ async function processQueue() {
 
   const msg = messageQueue.shift();
   try {
-    await handleCarClawMessage(msg);
+    await handleMessage(msg);
   } catch (err) {
     log(`Error processing message: ${err.message}`);
     broadcastMessage(`Error: ${err.message}`, msg.group);
@@ -154,10 +177,12 @@ async function processQueue() {
 
 // ─── Claude Code Invocation ─────────────────────────────────────────────────
 
-function handleCarClawMessage(msg) {
+function handleMessage(msg) {
   return new Promise((resolve, reject) => {
     const userMessage = msg.message;
     const group = msg.group;
+    // For agent-to-agent: reply directly to sender. For human: broadcast to all.
+    const replyTo = (msg.fromId && msg.fromId.startsWith("agent:")) ? msg.from : null;
 
     // Build claude command args
     const args = [
@@ -214,10 +239,10 @@ function handleCarClawMessage(msg) {
       const response = stdout.trim();
       if (response) {
         log(`Response (${response.length} chars): ${response.substring(0, 80)}...`);
-        broadcastMessage(response, group);
+        broadcastMessage(response, group, replyTo);
       } else {
         log("No response from claude");
-        broadcastMessage("(No response — claude may need authentication or configuration)", group);
+        broadcastMessage("(No response — claude may need authentication or configuration)", group, replyTo);
       }
 
       resolve();
@@ -240,7 +265,7 @@ function handleCarClawMessage(msg) {
 
 // ─── Start ──────────────────────────────────────────────────────────────────
 
-log("Starting CarClaw Agent Daemon...");
+log("Starting Noesis Ship Agent Daemon...");
 log(`Project: ${PROJECT_DIR}`);
 log(`Claude: ${CLAUDE_BIN}`);
 log(`Bridge: ${BRIDGE_URL}`);
