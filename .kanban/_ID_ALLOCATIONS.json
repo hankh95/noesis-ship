@@ -131,5 +131,12 @@
     "number": 17,
     "allocated_at": "2026-02-21T11:00:06.958872",
     "allocated_by": "hankh1844"
+  },
+  {
+    "id": "EXP-018",
+    "prefix": "EXP",
+    "number": 18,
+    "allocated_at": "2026-02-21T11:15:41.920754",
+    "allocated_by": "unknown"
   }
 ]
