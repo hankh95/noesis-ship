@@ -1,0 +1,52 @@
+# Noesis Ship Template: Galleon
+# Full development team (4-8 agents)
+#
+# Usage: noesis-ship init --template galleon
+
+ship:
+  name: "My Galleon"
+  template: galleon
+  description: "Full development team"
+
+crew:
+  - id: captain
+    name: Captain
+    role: architect
+    model: claude-opus-4-6
+
+  - id: navigator
+    name: Navigator
+    role: researcher
+    model: claude-opus-4-6
+
+  - id: bosun
+    name: Bosun
+    role: developer
+    model: claude-sonnet-4-6
+
+  - id: carpenter
+    name: Carpenter
+    role: developer
+    model: claude-sonnet-4-6
+
+  - id: lookout
+    name: Lookout
+    role: reviewer
+    model: claude-sonnet-4-6
+
+  - id: quartermaster
+    name: Quartermaster
+    role: devops
+    model: claude-haiku-4-5-20251001
+
+adapters:
+  websocket:
+    port: 3100
+    bonjour: true
+
+  mcp:
+    enabled: true
+
+plugins:
+  - yurtle-kanban
+  - git

@@ -1,0 +1,17 @@
+{
+  "name": "noesis-ship",
+  "version": "0.1.0",
+  "description": "Pluggable multi-agent communication platform — NATS core with WebSocket, MCP, and HTTP/SSE adapters",
+  "private": true,
+  "workspaces": [
+    "adapters/websocket"
+  ],
+  "scripts": {
+    "start": "cd adapters/websocket && node -r dotenv/config server.js",
+    "daemon": "cd adapters/websocket && node agent-daemon.js",
+    "mcp": "cd adapters/websocket && node mcp-server.js",
+    "test:ws": "cd adapters/websocket && node test-ws.js"
+  },
+  "author": "Congruent Systems PBC",
+  "license": "ISC"
+}

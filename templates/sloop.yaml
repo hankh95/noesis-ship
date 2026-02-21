@@ -1,0 +1,28 @@
+# Noesis Ship Template: Sloop
+# Two agents for pair programming or code review
+#
+# Usage: noesis-ship init --template sloop
+
+ship:
+  name: "My Sloop"
+  template: sloop
+  description: "Pair programming, code review"
+
+crew:
+  - id: lead
+    name: Lead
+    role: architect
+    model: claude-opus-4-6
+
+  - id: mate
+    name: Mate
+    role: developer
+    model: claude-sonnet-4-6
+
+adapters:
+  websocket:
+    port: 3100
+    bonjour: true
+
+plugins:
+  - yurtle-kanban

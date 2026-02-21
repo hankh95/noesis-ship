@@ -1,0 +1,22 @@
+# Noesis Ship Template: Dinghy
+# A single-agent ship for personal use
+#
+# Usage: noesis-ship init --template dinghy
+
+ship:
+  name: "My Dinghy"
+  template: dinghy
+  description: "Solo agent, personal assistant"
+
+crew:
+  - id: captain
+    name: Captain
+    role: general
+    model: claude-sonnet-4-6
+
+adapters:
+  websocket:
+    port: 3100
+    bonjour: true
+
+plugins: []

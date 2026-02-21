@@ -1,0 +1,32 @@
+{
+  "name": "noesis-ship-websocket-adapter",
+  "version": "1.0.0",
+  "description": "WebSocket relay adapter for Noesis Ship — pure WebSocket agent communication with Bonjour discovery",
+  "main": "server.js",
+  "scripts": {
+    "start": "node -r dotenv/config server.js",
+    "start:bare": "node server.js",
+    "daemon": "node agent-daemon.js",
+    "mcp": "node mcp-server.js",
+    "test": "node test-ws.js",
+    "groups": "node groups.js",
+    "send": "node send.js"
+  },
+  "keywords": [
+    "noesis-ship",
+    "websocket",
+    "relay",
+    "agent"
+  ],
+  "author": "Congruent Systems PBC",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@anthropic-ai/claude-code": "^2.1.49",
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "bonjour-service": "^1.3.0",
+    "dotenv": "^17.3.1",
+    "ws": "^8.19.0",
+    "zod": "^4.3.6"
+  }
+}

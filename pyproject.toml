@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "noesis-ship"
+version = "0.1.0"
+description = "Pluggable multi-agent communication platform — NATS core with WebSocket, MCP, and HTTP/SSE adapters"
+readme = "README.md"
+license = "ISC"
+requires-python = ">=3.11"
+authors = [
+    { name = "Congruent Systems PBC" },
+]
+keywords = ["nats", "multi-agent", "communication", "websocket", "mcp"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+
+dependencies = [
+    "nats-py>=2.7.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["noesis_ship"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
