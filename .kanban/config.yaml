@@ -1,21 +1,13 @@
-# Yurtle Kanban Configuration for Noesis Ship
+# yurtle-kanban configuration
+kanban:
+  theme: software
 
-board_name: "Noesis Ship Development"
-default_branch: main
+  paths:
+    root: work/
+    scan_paths:
+    - "kanban-work/expeditions/"
 
-# ID prefix for expeditions (using EXP to align with nusy-product-team)
-id_prefix: "EXP"
-
-# Work directory (align with nusy-product-team)
-work_dir: "kanban-work/expeditions"
-
-# Columns
-columns:
-  - backlog
-  - ready
-  - in-progress
-  - review
-  - done
-
-# Default priority
-default_priority: medium
+  ignore:
+    - "**/archive/**"
+    - "**/templates/**"
+    - "**/_TEMPLATE*"
