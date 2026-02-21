@@ -7,6 +7,7 @@
     "start": "node -r dotenv/config server.js",
     "start:bare": "node server.js",
     "daemon": "node agent-daemon.js",
+    "fleet-log": "node fleet-log-writer.js",
     "mcp": "node mcp-server.js",
     "test": "node test-ws.js",
     "groups": "node groups.js",
