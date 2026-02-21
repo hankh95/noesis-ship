@@ -1,3 +1,13 @@
+# ---
+# id: TPL-SLOOP
+# type: ship-template
+# title: "Sloop — Two Agent Ship"
+# agents: 2
+# description: "Two agents for pair programming or code review"
+# usage: "noesis-ship init --template sloop"
+# tags: [template, pair, review]
+# ---
+#
 # Noesis Ship Template: Sloop
 # Two agents for pair programming or code review
 #

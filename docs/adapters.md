@@ -1,3 +1,13 @@
+---
+id: DOC-ADAPTERS
+type: doc
+title: "Noesis Ship Adapters"
+category: adapters
+audience: [developer, agent]
+created: 2026-02-21
+tags: [websocket, mcp, adapters, protocols]
+---
+
 # Adapters
 
 Adapters bridge external protocols to the Noesis Ship core. Each adapter runs as a separate process and communicates with the NATS core (when available) or operates standalone.

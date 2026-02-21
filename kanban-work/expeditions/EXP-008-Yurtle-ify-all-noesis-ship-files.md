@@ -2,10 +2,10 @@
 id: EXP-008
 title: "Yurtle-ify All Noesis Ship Files"
 type: expedition
-status: backlog
+status: done
 created: 2026-02-21
 priority: high
-assignee:
+assignee: M5
 tags: [yurtle, graph, documentation]
 depends_on: []
 ---

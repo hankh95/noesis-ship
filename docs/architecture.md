@@ -1,3 +1,13 @@
+---
+id: DOC-ARCH
+type: doc
+title: "Noesis Ship Architecture"
+category: architecture
+audience: [developer, agent]
+created: 2026-02-21
+tags: [nats, adapters, plugins, architecture]
+---
+
 # Architecture
 
 ## Overview

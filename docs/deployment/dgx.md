@@ -1,3 +1,14 @@
+---
+id: DOC-DEPLOY-DGX
+type: deployment-guide
+title: "DGX Deployment Guide"
+platform: linux
+category: deployment
+audience: [ops, agent]
+created: 2026-02-21
+tags: [dgx, systemd, deployment, ubuntu]
+---
+
 # DGX Deployment Guide
 
 Complete guide for deploying Noesis Ship on NVIDIA DGX Spark (Ubuntu Linux) with systemd service management.

@@ -1,3 +1,13 @@
+# ---
+# id: TPL-DINGHY
+# type: ship-template
+# title: "Dinghy — Single Agent Ship"
+# agents: 1
+# description: "A single-agent ship for personal use"
+# usage: "noesis-ship init --template dinghy"
+# tags: [template, solo, personal]
+# ---
+#
 # Noesis Ship Template: Dinghy
 # A single-agent ship for personal use
 #

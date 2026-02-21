@@ -1,3 +1,13 @@
+---
+id: DOC-ARCH-REVIEW-DGX
+type: review
+title: "Noesis Ship Architecture Review"
+reviewer: DGX
+category: architecture
+created: 2026-02-21
+tags: [review, architecture, dgx]
+---
+
 # Noesis Ship Architecture Review
 **Reviewer:** DGX Agent
 **Date:** 2026-02-21

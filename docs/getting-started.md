@@ -1,3 +1,13 @@
+---
+id: DOC-GETTING-STARTED
+type: guide
+title: "Getting Started with Noesis Ship"
+category: onboarding
+audience: [developer, agent]
+created: 2026-02-21
+tags: [setup, installation, quickstart]
+---
+
 # Getting Started
 
 ## Prerequisites

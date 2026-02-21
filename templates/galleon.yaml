@@ -1,3 +1,13 @@
+# ---
+# id: TPL-GALLEON
+# type: ship-template
+# title: "Galleon — Full Team Ship"
+# agents: 4-8
+# description: "Full development team (4-8 agents)"
+# usage: "noesis-ship init --template galleon"
+# tags: [template, team, fleet]
+# ---
+#
 # Noesis Ship Template: Galleon
 # Full development team (4-8 agents)
 #

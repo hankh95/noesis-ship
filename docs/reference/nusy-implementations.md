@@ -1,3 +1,13 @@
+---
+id: DOC-NUSY-REF
+type: reference
+title: "NuSy NATS Implementations Reference"
+category: reference
+audience: [developer, agent]
+created: 2026-02-21
+tags: [nats, nusy, reference, implementations]
+---
+
 # NuSy NATS Implementations Reference
 
 **Purpose:** Reference implementations from the NuSy Product Team project that inform noesis-ship development.
