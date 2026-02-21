@@ -44,19 +44,28 @@ chown -R $ACTUAL_USER:$ACTUAL_USER "$INSTALL_DIR/data" "$INSTALL_DIR/logs"
 echo "✓ Directories created"
 echo ""
 
-echo "Step 2: Installing systemd service files..."
-cp "$INSTALL_DIR/config/systemd/nats-server.service" /etc/systemd/system/
-cp "$INSTALL_DIR/config/systemd/noesis-ship-websocket.service" /etc/systemd/system/
-cp "$INSTALL_DIR/config/systemd/noesis-ship-agent-daemon.service" /etc/systemd/system/
-echo "✓ Service files copied to /etc/systemd/system/"
+echo "Step 2: Installing systemd service files (templating paths for $ACTUAL_USER)..."
+ACTUAL_HOME=$(eval echo "~$ACTUAL_USER")
+for svc in nats-server.service noesis-ship-websocket.service noesis-ship-agent-daemon.service; do
+    sed -e "s|__USER__|$ACTUAL_USER|g" -e "s|__HOME__|$ACTUAL_HOME|g" \
+        "$INSTALL_DIR/config/systemd/$svc" > "/etc/systemd/system/$svc"
+done
+echo "✓ Service files installed to /etc/systemd/system/ (paths set for $ACTUAL_USER)"
 echo ""
 
-echo "Step 3: Reloading systemd configuration..."
+echo "Step 3: Templating NATS config..."
+sed -e "s|__HOME__|$ACTUAL_HOME|g" \
+    "$INSTALL_DIR/config/nats-server.conf" > "$INSTALL_DIR/config/nats-server.local.conf"
+chown $ACTUAL_USER:$ACTUAL_USER "$INSTALL_DIR/config/nats-server.local.conf"
+echo "✓ NATS config written to config/nats-server.local.conf"
+echo ""
+
+echo "Step 4: Reloading systemd configuration..."
 systemctl daemon-reload
 echo "✓ Systemd reloaded"
 echo ""
 
-echo "Step 4: Enabling services to start on boot..."
+echo "Step 5: Enabling services to start on boot..."
 systemctl enable nats-server
 systemctl enable noesis-ship-websocket
 systemctl enable noesis-ship-agent-daemon

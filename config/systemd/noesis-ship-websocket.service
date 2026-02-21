@@ -6,9 +6,9 @@ Wants=nats-server.service
 
 [Service]
 Type=simple
-User=hankh959
-Group=hankh959
-WorkingDirectory=/home/hankh959/projects/noesis-ship/adapters/websocket
+User=__USER__
+Group=__USER__
+WorkingDirectory=__HOME__/projects/noesis-ship/adapters/websocket
 ExecStart=/usr/bin/node server.js
 Restart=always
 RestartSec=5
@@ -28,7 +28,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/home/hankh959/projects/noesis-ship
+ReadWritePaths=__HOME__/projects/noesis-ship
 
 # Resource limits
 LimitNOFILE=4096

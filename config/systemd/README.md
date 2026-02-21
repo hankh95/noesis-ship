@@ -10,10 +10,16 @@ This directory contains systemd service unit files for running Noesis Ship servi
 
 ## Installation
 
-Copy these files to `/etc/systemd/system/`:
+The service files use `__USER__` and `__HOME__` placeholders. The installer script handles this automatically:
 
 ```bash
-sudo cp *.service /etc/systemd/system/
+sudo ./scripts/install-services-dgx.sh
+```
+
+Or manually template and copy:
+
+```bash
+sed -e "s|__USER__|$USER|g" -e "s|__HOME__|$HOME|g" *.service | sudo tee /etc/systemd/system/
 sudo systemctl daemon-reload
 ```
 
@@ -41,8 +47,8 @@ sudo systemctl status nats-server noesis-ship-websocket noesis-ship-agent-daemon
 
 ## Configuration Notes
 
-- **User/Group**: Services run as user `hankh959` (change to your username)
-- **Paths**: Update all paths to match your installation directory
+- **User/Group**: Service files use `__USER__` placeholder — the installer auto-detects your username
+- **Paths**: `__HOME__` placeholder is replaced with your home directory by the installer
 - **NATS Server Path**: Update `ExecStart` in `nats-server.service` to point to your NATS binary
 - **Node.js Path**: Update `ExecStart` in WebSocket and agent daemon services if Node.js is not at `/usr/bin/node`
 

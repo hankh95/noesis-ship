@@ -6,9 +6,9 @@ Wants=noesis-ship-websocket.service
 
 [Service]
 Type=simple
-User=hankh959
-Group=hankh959
-WorkingDirectory=/home/hankh959/projects/noesis-ship/adapters/websocket
+User=__USER__
+Group=__USER__
+WorkingDirectory=__HOME__/projects/noesis-ship/adapters/websocket
 ExecStart=/usr/bin/node agent-daemon.js
 Restart=always
 RestartSec=5
@@ -19,7 +19,7 @@ SyslogIdentifier=noesis-ship-agent
 # Environment variables
 Environment=NODE_ENV=production
 Environment=BRIDGE_URL=ws://localhost:3100
-Environment=PROJECT_DIR=/home/hankh959/projects/noesis-ship
+Environment=PROJECT_DIR=__HOME__/projects/carclaw
 Environment=CLAUDE_BIN=/usr/local/bin/claude
 Environment=AGENT_NAME=DGX
 Environment=MAX_TURNS=10
@@ -29,8 +29,8 @@ NoNewPrivileges=false
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/home/hankh959/projects/noesis-ship
-ReadWritePaths=/home/hankh959/.claude
+ReadWritePaths=__HOME__/projects/noesis-ship
+ReadWritePaths=__HOME__/.claude
 
 # Resource limits (higher for LLM inference)
 LimitNOFILE=8192

@@ -6,9 +6,9 @@ Before=noesis-ship-websocket.service noesis-ship-agent-daemon.service
 
 [Service]
 Type=simple
-User=hankh959
-Group=hankh959
-ExecStart=/home/hankh959/.local/bin/nats-server -js -c /home/hankh959/projects/noesis-ship/config/nats-server.conf
+User=__USER__
+Group=__USER__
+ExecStart=__HOME__/.local/bin/nats-server -js -c __HOME__/projects/noesis-ship/config/nats-server.local.conf
 Restart=always
 RestartSec=5
 StandardOutput=journal
@@ -20,8 +20,8 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/home/hankh959/projects/noesis-ship/data
-ReadWritePaths=/home/hankh959/projects/noesis-ship/logs
+ReadWritePaths=__HOME__/projects/noesis-ship/data
+ReadWritePaths=__HOME__/projects/noesis-ship/logs
 
 # Resource limits
 LimitNOFILE=65536

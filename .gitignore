@@ -49,3 +49,6 @@ logs/
 *.log
 data/
 jetstream/
+
+# Generated local configs
+config/nats-server.local.conf
