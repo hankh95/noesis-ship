@@ -1,0 +1,20 @@
+{
+  "name": "@noesis-ship/daemon",
+  "version": "0.1.0",
+  "description": "Agent daemon — spawns Claude Code sessions for incoming messages",
+  "main": "agent-daemon.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node agent-daemon.js",
+    "start:v2": "node agent-daemon-v2.mjs",
+    "test": "node -e \"console.log('daemon: syntax OK')\" && node --check agent-daemon.js",
+    "test:v2": "node test-daemon-v2.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.1.0",
+    "@noesis-ship/shared": "0.1.0",
+    "dotenv": "^17.3.1",
+    "nats": "^2.28.0",
+    "ws": "^8.19.0"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "@noesis-ship/fleet-log",
+  "version": "0.1.0",
+  "description": "Fleet comms log writer — subscribes to NATS channels and writes Yurtle markdown transcripts",
+  "main": "fleet-log-writer.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node fleet-log-writer.js"
+  },
+  "dependencies": {
+    "@noesis-ship/shared": "0.1.0",
+    "nats": "^2.29.3"
+  }
+}

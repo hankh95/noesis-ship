@@ -275,8 +275,14 @@ function handleMessage(msg) {
 
       const response = stdout.trim();
       if (response) {
-        log(`Response (${response.length} chars): ${response.substring(0, 80)}...`);
-        broadcastMessage(response, group, replyTo);
+        // Filter out boilerplate greetings that add no value
+        const boilerplate = /^(ready to help|how can i help|hello|hi there|hey)[.!]?$/i;
+        if (boilerplate.test(response)) {
+          log(`Filtered boilerplate response: "${response}"`);
+        } else {
+          log(`Response (${response.length} chars): ${response.substring(0, 80)}...`);
+          broadcastMessage(response, group, replyTo);
+        }
       } else {
         log("No response from claude");
         broadcastMessage("(No response — claude may need authentication or configuration)", group, replyTo);

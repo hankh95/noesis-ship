@@ -27,7 +27,7 @@ jobs:
         run: pytest tests/ -v
 
   node:
-    name: Node.js (WebSocket adapter)
+    name: Node.js (packages)
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -40,12 +40,24 @@ jobs:
           node-version: ${{ matrix.node-version }}
 
       - name: Install dependencies
-        working-directory: adapters/websocket
         run: npm ci
 
-      - name: Check syntax
-        working-directory: adapters/websocket
-        run: node --check server.js agent-daemon.js mcp-server.js fleet-log-writer.js
+      - name: Run shared package tests
+        run: npm test
+
+      - name: Check syntax (packages)
+        run: |
+          node --check packages/relay/server.js
+          node --check packages/relay/session-watcher.js
+          node --check packages/relay/send.js
+          node --check packages/relay/groups.js
+          node --check packages/daemon/agent-daemon.js
+          node --check packages/mcp-server/mcp-server.js
+          node --check packages/fleet-log/fleet-log-writer.js
+          node --check packages/shared/index.js
+          node --check packages/shared/config.js
+          node --check packages/shared/nats-helpers.js
+          node --check packages/shared/wire-protocol.js
 
       - name: Check scripts syntax
         run: |
@@ -64,14 +76,16 @@ jobs:
       - name: Check JSON validity
         run: |
           node -e "JSON.parse(require('fs').readFileSync('package.json'))"
-          node -e "JSON.parse(require('fs').readFileSync('adapters/websocket/package.json'))"
+          for pkg in packages/*/package.json; do
+            node -e "JSON.parse(require('fs').readFileSync('$pkg'))"
+          done
 
       - name: Check YAML frontmatter in expeditions
         run: |
           for f in kanban-work/expeditions/*.md; do
             if head -1 "$f" | grep -q '^---'; then
-              echo "✓ $f has frontmatter"
+              echo "OK $f has frontmatter"
             else
-              echo "✗ $f missing frontmatter" && exit 1
+              echo "FAIL $f missing frontmatter" && exit 1
             fi
           done
