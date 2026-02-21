@@ -1,20 +1,58 @@
 # Noesis Ship Active Context
 
 **Updated:** 2026-02-21
-**Last Agent:** M5
+**Last Agent:** DGX
 
 ---
 
 ## Current Position
 
 **Repository:** hankh95/noesis-ship
-**Status:** EXP-010 centralization — Mini executing Phase 1
+**Status:** ✅ EXP-010 Phase 2 Complete (Mini + DGX) — M5 Pending
+
+### Infrastructure Update — EXP-010 Centralization
+
+**Status:** Phase 1 complete (Mini ✅), Phase 2 in progress (DGX ✅, M5 ⏳)
+
+**Architecture Change:** Moving from distributed NATS (each machine runs its own) to centralized NATS (one central server, all agents connect remotely)
+
+**Central Server:**
+- **Machine:** Mini (Mac Mini M4)
+- **Tailscale IP:** `100.113.140.45`
+- **Services Running:**
+  - NATS server: `nats://100.113.140.45:4222`
+  - WebSocket adapter: `ws://100.113.140.45:3100`
+  - Agent-daemon: Connected to localhost
+
+**Phase 1 — Mini Setup (✅ COMPLETE):**
+- Mini is now the central NATS server
+- NATS + WebSocket adapter running via launchd
+- Mini agent-daemon connected to localhost:3100
+- All services confirmed running and healthy
+
+**Phase 2 — Agent Reconfiguration:**
+- **DGX (✅ COMPLETE):** Agent-daemon → `ws://100.113.140.45:3100`
+  - Local NATS/WebSocket stopped and disabled
+  - Systemd service updated and running
+  - Verified connection via logs: "Connected to bridge at ws://100.113.140.45:3100"
+- **M5 (⏳ PENDING):** Needs to update BRIDGE_URL and restart agent-daemon
+  - Update `~/Library/LaunchAgents/com.congruentsystems.noesis-ship-agent-daemon.plist`
+  - Change `BRIDGE_URL` to `ws://100.113.140.45:3100`
+  - Stop local NATS/WebSocket (if running)
+  - Restart agent-daemon
+
+**Phase 3 — Testing (⏳ PENDING):**
+- NATS pub/sub test across all machines
+- Ships Comm iOS app voice testing
+- Verify fleet coordination (#fleet, #m5, #dgx, #mini channels)
+
+See [EXP-010](https://github.com/hankh95/noesis-ship/blob/main/kanban-work/expeditions/EXP-010-Centralize-noesis-ship-One-NATS-server-for-fleet-c.md) for full expedition details.
 
 ### Active Work
 
 **EXP-010: Centralize noesis-ship on Mini M4**
-- **Status:** In progress — Mini is setting up as central server
-- **Assignee:** Mini agent
+- **Status:** Phase 2 in progress — Mini ✅ + DGX ✅, M5 pending
+- **Assignee:** Multi-agent (Mini complete, DGX complete, M5 next)
 - **What:** One central NATS server on Mini, all agents connect via Tailscale
 - **Expedition:** `kanban-work/expeditions/EXP-010-Centralize-noesis-ship-One-NATS-server-for-fleet-c.md`
 
@@ -37,7 +75,7 @@
 | EXP-002 | done | CLAUDE.md (merged to main) |
 | EXP-003 | done | DGX deployment docs (PR #2 merged) |
 | EXP-009 | review | Kanban NATS webhook (PR #3 open) |
-| EXP-010 | in-progress | Centralize on Mini M4 |
+| EXP-010 | in-progress | Centralize on Mini M4 (Phase 2: Mini ✅, DGX ✅, M5 pending) |
 
 ---
 
@@ -76,15 +114,15 @@ node server.js
 ## Fleet Comms — Central Server Live on Mini
 
 **Updated:** 2026-02-21
-**Status:** Mini M4 is running the central NATS + WebSocket relay. DGX is connected via Tailscale WebSocket but has no agent-daemon to respond to messages.
+**Status:** Mini M4 is running the central NATS + WebSocket relay. DGX agent-daemon is connected and operational. M5 setup pending.
 
 ### Fleet Tailscale Network
 
-| Device | Tailscale IP | Role |
-|--------|-------------|------|
-| Mini (Mac Mini M4) | 100.113.140.45 | **Central NATS server** |
-| M5 (MacBook Pro) | 100.109.27.49 | Client (setting up) |
-| DGX (DGX Spark) | 100.72.55.109 | Client (WebSocket connected, no agent-daemon) |
+| Device | Tailscale IP | Role | Status |
+|--------|-------------|------|--------|
+| Mini (Mac Mini M4) | 100.113.140.45 | **Central NATS server** | ✅ Running |
+| DGX (DGX Spark) | 100.72.55.109 | Client | ✅ Connected |
+| M5 (MacBook Pro) | 100.109.27.49 | Client | ⏳ Setup pending |
 
 ### Mini Central Services
 
@@ -96,85 +134,131 @@ node server.js
 | Agent HTTP API | 3102 | Running |
 | Agent Daemon | — | Running (launchd, KeepAlive) |
 
-### DGX: Set Up Your Agent Daemon
+### M5: Setup Instructions
 
-DGX — you're connected to the WebSocket relay (we can see your Tailscale IP in the logs) but you need an agent-daemon running so you can respond to fleet messages. Here's what to do:
+M5 — you're next! Same pattern as DGX but with launchd (macOS). Here's what to do:
 
-**1. Create a `.env` for the agent-daemon on DGX:**
+**1. Update your agent-daemon launchd plist:**
+
+File: `~/Library/LaunchAgents/com.congruentsystems.noesis-ship-agent-daemon.plist`
+
+Change the `BRIDGE_URL` environment variable:
+```xml
+<key>EnvironmentVariables</key>
+<dict>
+    <key>BRIDGE_URL</key>
+    <string>ws://100.113.140.45:3100</string>
+    <key>AGENT_NAME</key>
+    <string>M5</string>
+    <key>PROJECT_DIR</key>
+    <string>/Users/hankh95/Projects/nusy-product-team</string>
+    <key>CLAUDE_BIN</key>
+    <string>/path/to/your/claude</string>
+    <key>MAX_TURNS</key>
+    <string>10</string>
+</dict>
+```
+
+**2. Stop local NATS/WebSocket services (if running):**
 
 ```bash
-# In your noesis-ship/adapters/websocket/ directory:
-cat > .env.daemon <<'EOF'
-BRIDGE_URL=ws://100.113.140.45:3100
-PROJECT_DIR=/home/hankh959/projects/nusy-product-team
-CLAUDE_BIN=/path/to/your/claude
-AGENT_NAME=DGX
-MAX_TURNS=10
-EOF
+launchctl unload ~/Library/LaunchAgents/com.congruentsystems.nats.plist
+launchctl unload ~/Library/LaunchAgents/com.congruentsystems.noesis-ship-websocket.plist
+# Optionally disable them so they don't auto-start
 ```
 
-Find your `claude` binary path: `which claude` or check `ps aux | grep claude` while a session is running.
-
-**2. Run the agent-daemon:**
+**3. Restart agent-daemon:**
 
 ```bash
-cd /home/hankh959/projects/noesis-ship/adapters/websocket
-# Copy .env.daemon fields into your .env or export them
-node agent-daemon.js
+launchctl unload ~/Library/LaunchAgents/com.congruentsystems.noesis-ship-agent-daemon.plist
+launchctl load ~/Library/LaunchAgents/com.congruentsystems.noesis-ship-agent-daemon.plist
 ```
 
-**3. For persistence (systemd on DGX):**
+**4. Verify connection:**
 
-```ini
-# /etc/systemd/user/noesis-ship-agent-daemon.service
-[Unit]
-Description=Noesis Ship Agent Daemon (DGX)
-After=network-online.target
+Check logs to confirm connection to Mini's central server.
 
-[Service]
-ExecStart=/usr/bin/node /home/hankh959/projects/noesis-ship/adapters/websocket/agent-daemon.js
-WorkingDirectory=/home/hankh959/projects/noesis-ship/adapters/websocket
-Environment=BRIDGE_URL=ws://100.113.140.45:3100
-Environment=PROJECT_DIR=/home/hankh959/projects/nusy-product-team
-Environment=CLAUDE_BIN=/path/to/your/claude
-Environment=AGENT_NAME=DGX
-Environment=MAX_TURNS=10
-Restart=always
-RestartSec=3
+**Note:** You do NOT need your own NATS server. Mini is the central hub — all agents connect to Mini's WebSocket relay at `ws://100.113.140.45:3100`.
 
-[Install]
-WantedBy=default.target
-```
+---
 
-```bash
-systemctl --user daemon-reload
-systemctl --user enable --now noesis-ship-agent-daemon
-```
+## Recent Voyages
 
-**4. Test by sending a message back:**
+### 2026-02-21 — DGX — EXP-010 Phase 2 Complete ✅
 
-```bash
-curl -s -X POST http://100.113.140.45:3102/message \
-  -H "Content-Type: application/json" \
-  -d '{"group":"fleet","from":"DGX","message":"DGX reporting in. Agent daemon operational."}'
-```
+**What was completed:**
+1. **DGX Phase 2:** Connected to Mini's central server
+   - Updated `~/.config/systemd/user/noesis-ship-agent-daemon.service`
+   - Changed `BRIDGE_URL=ws://100.113.140.45:3100`
+   - Stopped and disabled local NATS/WebSocket services:
+     - `systemctl --user stop nats-server noesis-ship-websocket`
+     - `systemctl --user disable nats-server noesis-ship-websocket`
+   - Reloaded systemd and restarted agent-daemon
+   - Verified connection: "Connected to bridge at ws://100.113.140.45:3100"
 
-**Note:** You do NOT need your own NATS server. Mini is the central hub — all agents connect to Mini's WebSocket relay at `ws://100.113.140.45:3100`. The relay handles NATS pub/sub internally.
+**Key decisions:**
+- Test centralized architecture on existing Mini M4 (no new hardware purchase)
+- Mini serves as central server ($0 cost vs $600 for new hardware)
+- Agent-daemons connect via Tailscale for security
 
-### M5: Setup Instructions Coming
+**Files modified:**
+- DGX: `~/.config/systemd/user/noesis-ship-agent-daemon.service`
+- noesis-ship: `claude-workspace/ACTIVE-CONTEXT.md` (this file)
 
-M5 — same pattern as DGX but with launchd (macOS). When you're ready, the setup is:
-- `BRIDGE_URL=ws://100.113.140.45:3100`
-- `AGENT_NAME=M5`
-- `PROJECT_DIR=/Users/hankh95/Projects/nusy-product-team`
-- Find your claude binary and set `CLAUDE_BIN`
+**What next session should do:**
+- **M5 agent:** Execute Phase 2 for M5 (update BRIDGE_URL, restart agent-daemon)
+- **After M5 connects:** Phase 3 testing (NATS pub/sub, Ships Comm voice commands)
+
+**Blockers:** None — M5 just needs to reconfigure when ready
+
+---
+
+### 2026-02-21 — Mini — EXP-010 Phase 1 Complete ✅
+
+**What was completed:**
+1. **Mini Phase 1:** Set up central NATS server at 100.113.140.45
+   - NATS server running via launchd
+   - WebSocket adapter running on port 3100
+   - Agent-daemon connected to localhost
+   - All services confirmed healthy
+
+---
+
+### 2026-02-21 — DGX — Repository Setup
+
+**What was completed:**
+- Cloned hankh95/noesis-ship to `/home/hankh959/projects/noesis-ship`
+- Conducted comprehensive architecture review
+- Added yurtle-kanban integration with proper directory structure
+- Created 7 expeditions for platform development
+- Added CLAUDE.md and ACTIVE-CONTEXT.md to repository root
+
+**Key decisions:**
+- Use `kanban-work/expeditions/` directory structure (matches nusy-product-team)
+- Split work between noesis-ship (platform) and nusy-product-team (integration)
+- Priority order: EXP-002 (CLAUDE.md) → EXP-001 (NATS to WebSocket) → EXP-003 (deployment docs)
+
+**Files created/modified:**
+- `docs/architecture-review-dgx.md` (new)
+- `.kanban/config.yaml` (new)
+- `kanban-work/expeditions/EXP-001.md` through `EXP-007.md` (new)
+- `CLAUDE.md` (new)
+- `claude-workspace/ACTIVE-CONTEXT.md` (new)
+
+**What next session should do:**
+- Begin with EXP-002 (Add CLAUDE.md with agent identity)
+- After EXP-002: Tackle EXP-001 (Wire NATS to WebSocket adapter) — critical path
+- After EXP-001: EXP-003 (Document DGX deployment) — critical path
+
+**Blockers:** None
 
 ---
 
 ## Context Notes
 
 - **Architecture:** NATS core (Python) + WebSocket adapter (Node.js) + agent daemon + MCP server
-- **DGX:** noesis-ship deployed with 3 systemd services (will reconfigure to point to Mini)
-- **M5:** Running noesis-ship locally (will reconfigure to point to Mini)
+- **Current State:** Centralized on Mini (100.113.140.45), DGX connected, M5 pending
+- **DGX:** Agent-daemon connected to Mini central server (local NATS/WebSocket disabled)
+- **M5:** Needs Phase 2 reconfiguration to connect to Mini
 - **Ships Comm:** iOS/CarPlay voice app, protocol-compatible with noesis-ship (zero code changes)
 - **Wire protocol:** Same as old carclaw-bridge — JSON over WebSocket
