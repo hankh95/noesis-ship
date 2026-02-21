@@ -6,7 +6,6 @@ kanban:
     root: kanban-work/
     scan_paths:
     - "kanban-work/expeditions/"
-    - "kanban-work/features/"
     - "kanban-work/tasks/"
     - "kanban-work/bugs/"
 

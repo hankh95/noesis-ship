@@ -52,10 +52,11 @@ Work items are organized by type into separate directories:
 
 | Type | Directory | Prefix | When to use |
 |------|-----------|--------|-------------|
-| **expedition** | `kanban-work/expeditions/` | `EXP-` | Large cross-cutting work spanning multiple files/systems |
-| **feature** | `kanban-work/features/` | `FEAT-` | New capabilities or enhancements to existing functionality |
+| **expedition** | `kanban-work/expeditions/` | `EXP-` | All feature work — new capabilities, enhancements, cross-cutting changes |
 | **task** | `kanban-work/tasks/` | `TASK-` | Discrete units of work: evaluations, config changes, maintenance |
 | **bug** | `kanban-work/bugs/` | `BUG-` | Defects, incorrect behavior, things that need fixing |
+
+**Note:** This repo uses the **nautical theme**. Expeditions are the nautical equivalent of features — do not create a `features/` directory.
 
 **Ask the user** if you're unsure which type to use. The user will specify the type when requesting new work items.
 
@@ -144,9 +145,8 @@ noesis-ship/
 │   │   └── session-watcher.js # Session transcript streaming
 │   └── mcp/               # (planned)
 ├── tests/                 # Python test suite
-├── kanban-work/           # Work tracking
-│   ├── expeditions/       # Large cross-cutting work (EXP-XXX)
-│   ├── features/          # New capabilities (FEAT-XXX)
+├── kanban-work/           # Work tracking (nautical theme)
+│   ├── expeditions/       # Feature work (EXP-XXX)
 │   ├── tasks/             # Discrete work items (TASK-XXX)
 │   └── bugs/              # Defects and fixes (BUG-XXX)
 ├── templates/             # Ship templates (Dinghy, Sloop, Galleon, Carrier)
