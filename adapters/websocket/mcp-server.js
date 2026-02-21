@@ -4,15 +4,16 @@
  *
  * Exposes the Noesis Ship bridge to Claude Code via Model Context Protocol.
  * Connects to the bridge WebSocket and provides tools for bidirectional
- * communication with Ships Comm (the iOS app).
+ * communication with Ships Comm (the iOS app) and fleet agents.
  *
  * Tools:
- *   - check_inbox     Read new messages from Ships Comm
- *   - send_to_carclaw Send a message to the Ships Comm app
- *   - bridge_status   Get bridge connection status
+ *   - check_inbox       Read new messages (human + agent) since last check
+ *   - send_to_ships_comm  Send a message to the Ships Comm iOS app
+ *   - send_to_agent     Send a directed message to a specific fleet agent
+ *   - bridge_status     Get bridge connection status, agents, and sessions
  *
  * Resources:
- *   - carclaw://inbox  Live inbox (with change notifications)
+ *   - noesis://inbox    Live inbox (with change notifications)
  *
  * Configuration (env):
  *   BRIDGE_URL  — WebSocket URL (default: ws://localhost:3100)
@@ -33,7 +34,7 @@ const RECONNECT_INTERVAL = 3000;
 let ws = null;
 let bridgeStatus = null;
 let connected = false;
-const inbox = [];          // Messages received from CarClaw
+const inbox = [];          // Messages received from Ships Comm and agents
 let lastReadIndex = 0;     // Track what's been read
 let mcpServerRef = null;   // Reference for sending notifications
 
@@ -58,23 +59,27 @@ function connectBridge() {
       if (msg.type === "status") {
         bridgeStatus = msg;
       } else if (msg.type === "message") {
-        // Only capture messages from CarClaw user (not session watcher echoes)
-        if (msg.fromId === "carclaw:user") {
+        // Capture messages from Ships Comm user and from agents
+        const isHuman = msg.fromId === "carclaw:user";
+        const isAgent = msg.fromId && msg.fromId.startsWith("agent:");
+
+        if (isHuman || isAgent) {
           inbox.push({
             timestamp: msg.timestamp || new Date().toISOString(),
-            from: msg.from || "User",
+            from: msg.from || "Unknown",
+            fromId: msg.fromId,
             to: msg.to || null,
             message: msg.message,
             group: msg.group,
           });
-          log(`Inbox message: ${msg.message.substring(0, 60)}`);
+          log(`Inbox [${isHuman ? "human" : "agent"}]: ${msg.message.substring(0, 60)}`);
 
           // Notify MCP client that inbox resource changed
           if (mcpServerRef) {
             try {
               mcpServerRef.server.notification({
                 method: "notifications/resources/updated",
-                params: { uri: "carclaw://inbox" },
+                params: { uri: "noesis://inbox" },
               });
             } catch {
               // Client may not support notifications
@@ -132,7 +137,7 @@ async function main() {
 
   server.tool(
     "check_inbox",
-    "Read new messages from the Ships Comm iOS app. Returns messages sent from the phone since the last check.",
+    "Read new messages from the Ships Comm iOS app and fleet agents. Returns messages received since the last check.",
     {},
     async () => {
       const newMessages = inbox.slice(lastReadIndex);
@@ -143,7 +148,7 @@ async function main() {
           content: [
             {
               type: "text",
-              text: "No new messages from Ships Comm.",
+              text: "No new messages.",
             },
           ],
         };
@@ -160,18 +165,18 @@ async function main() {
         content: [
           {
             type: "text",
-            text: `${newMessages.length} new message(s) from Ships Comm:\n\n${formatted}`,
+            text: `${newMessages.length} new message(s):\n\n${formatted}`,
           },
         ],
       };
     }
   );
 
-  // ── Tool: send_to_carclaw ──────────────────────────────────────────────
+  // ── Tool: send_to_ships_comm ───────────────────────────────────────────
 
   server.tool(
-    "send_to_carclaw",
-    "Send a message to the Ships Comm iOS app. The message will appear in the Code Companion conversation view.",
+    "send_to_ships_comm",
+    "Send a message to the Ships Comm iOS app. The message will appear in the conversation view.",
     {
       message: z.string().describe("The message to send to Ships Comm"),
     },
@@ -190,7 +195,6 @@ async function main() {
         ? `session:${bridgeStatus.sessions[0].sessionId}`
         : "session:active";
 
-      // Broadcast to all WS clients (CarClaw will display it)
       sendToBridge({
         type: "broadcast",
         payload: {
@@ -207,6 +211,50 @@ async function main() {
       return {
         content: [
           { type: "text", text: `Sent to Ships Comm: "${message}"` },
+        ],
+      };
+    }
+  );
+
+  // ── Tool: send_to_agent ────────────────────────────────────────────────
+
+  server.tool(
+    "send_to_agent",
+    "Send a directed message to a specific fleet agent (Mini, DGX, M5). The target agent's daemon will process the message and respond.",
+    {
+      agent: z.string().describe("Target agent name (e.g., Mini, DGX, M5)"),
+      message: z.string().describe("The message to send to the agent"),
+      group: z.string().optional().describe("Channel group (default: fleet)"),
+    },
+    async ({ agent, message, group }) => {
+      if (!connected) {
+        return {
+          content: [
+            { type: "text", text: "Error: Not connected to bridge." },
+          ],
+          isError: true,
+        };
+      }
+
+      const senderName = bridgeStatus?.machine || "MCP";
+
+      sendToBridge({
+        type: "broadcast",
+        payload: {
+          type: "message",
+          group: group || "fleet",
+          from: senderName,
+          fromId: `agent:${senderName.toLowerCase()}`,
+          to: agent,
+          message,
+          timestamp: new Date().toISOString(),
+          sessionMessage: true,
+        },
+      });
+
+      return {
+        content: [
+          { type: "text", text: `Sent to ${agent}: "${message}"` },
         ],
       };
     }
@@ -238,6 +286,14 @@ async function main() {
         `NATS: ${bridgeStatus.nats || "unknown"}`,
       ];
 
+      if (bridgeStatus.tailscaleIP) {
+        lines.push(`Tailscale: ${bridgeStatus.tailscaleIP}`);
+      }
+
+      if (bridgeStatus.relayURL) {
+        lines.push(`Relay: ${bridgeStatus.relayURL}`);
+      }
+
       if (bridgeStatus.agents?.length) {
         lines.push(
           `Agents: ${bridgeStatus.agents.map((a) => a.name).join(", ")}`
@@ -258,9 +314,9 @@ async function main() {
     }
   );
 
-  // ── Resource: carclaw://inbox ──────────────────────────────────────────
+  // ── Resource: noesis://inbox ────────────────────────────────────────────
 
-  server.resource("carclaw://inbox", "carclaw://inbox", async (uri) => {
+  server.resource("noesis://inbox", "noesis://inbox", async (uri) => {
     if (inbox.length === 0) {
       return {
         contents: [
