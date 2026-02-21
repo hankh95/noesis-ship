@@ -26,6 +26,7 @@ require("dotenv").config();
  *   MACHINE_NAME         — Display name for this machine's agent
  *   SESSION_GROUP_ID     — Default group ID for session messages
  *   NATS_URL             — NATS server URL (default: "nats://localhost:4222", optional)
+ *   RELAY_URL            — Cloudflare Tunnel URL (e.g. "wss://ship.congruentsys.com", optional)
  */
 
 const { WebSocketServer, WebSocket } = require("ws");
@@ -214,6 +215,10 @@ function getStatusPayload() {
   const tsIP = getTailscaleIP();
   if (tsIP) {
     payload.tailscaleIP = tsIP;
+  }
+  // Include relay URL (Cloudflare Tunnel) if configured
+  if (process.env.RELAY_URL) {
+    payload.relayURL = process.env.RELAY_URL;
   }
   return payload;
 }

@@ -1,0 +1,17 @@
+# Noesis Ship — Cloudflare Tunnel config template
+#
+# Replace __TUNNEL_ID__ and __HOME__ with actual values after running:
+#   cloudflared tunnel create <tunnel-name>
+#
+# The tunnel proxies wss://ship.congruentsys.com -> localhost:3100
+# (your noesis-ship WebSocket relay).
+
+tunnel: __TUNNEL_ID__
+credentials-file: __HOME__/.cloudflared/__TUNNEL_ID__.json
+
+ingress:
+  - hostname: ship.congruentsys.com
+    service: http://localhost:3100
+    originRequest:
+      noTLSVerify: true
+  - service: http_status:404
