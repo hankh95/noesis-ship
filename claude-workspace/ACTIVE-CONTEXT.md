@@ -1,7 +1,7 @@
 # Noesis Ship Active Context
 
 **Updated:** 2026-02-21
-**Last Agent:** M5
+**Last Agent:** Mini
 
 ---
 
@@ -76,7 +76,8 @@ See [EXP-010](https://github.com/hankh95/noesis-ship/blob/main/kanban-work/exped
 | EXP-002 | done | CLAUDE.md (merged to main) |
 | EXP-003 | done | DGX deployment docs (PR #2 merged) |
 | EXP-009 | review | Kanban NATS webhook (PR #3 open) |
-| EXP-010 | in-progress | Centralize on Mini M4 (Phase 2: Mini ✅, DGX ✅, M5 pending) |
+| EXP-010 | in-progress | Centralize on Mini M4 (Phase 2: ✅ ALL connected, Phase 3 testing) |
+| EXP-012 | done | Agent name overwrite fix (`!process.env.AGENT_NAME` guard) |
 
 ---
 
@@ -127,13 +128,15 @@ node server.js
 
 ### Mini Central Services
 
-| Service | Port | Status |
-|---------|------|--------|
-| NATS Server | 4222 | Running (launchd, KeepAlive) |
-| NATS Monitoring | 8222 | Running |
-| WebSocket Relay | 3100 | Running (launchd, KeepAlive) |
-| Agent HTTP API | 3102 | Running |
-| Agent Daemon | — | Running (launchd, KeepAlive) |
+| Service | Port | launchd Label | Status |
+|---------|------|---------------|--------|
+| NATS Server | 4222 | `com.congruentsystems.nats` | Running |
+| NATS Monitoring | 8222 | — | Running |
+| WebSocket Relay | 3100 | `com.congruentsystems.noesis-ship-websocket` | Running |
+| Agent HTTP API | 3102 | — | Running |
+| Agent Daemon | — | `com.congruentsystems.noesis-ship-agent-daemon` | Running |
+| Fleet Log Writer | — | `com.congruentsystems.noesis-ship-fleet-log` | Running (EXP-904) |
+| Command Deck v2 | 3200 | `com.congruentsystems.command-deck` | Running (EXP-905) |
 
 ### M5: Setup Instructions
 
