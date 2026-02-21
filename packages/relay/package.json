@@ -1,0 +1,20 @@
+{
+  "name": "@noesis-ship/relay",
+  "version": "0.1.0",
+  "description": "WebSocket relay server with Bonjour discovery and NATS integration",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node -r dotenv/config server.js",
+    "start:bare": "node server.js",
+    "test": "node test-ws.js",
+    "test:nats": "node test-nats-integration.js"
+  },
+  "dependencies": {
+    "@noesis-ship/shared": "0.1.0",
+    "bonjour-service": "^1.3.0",
+    "dotenv": "^17.3.1",
+    "nats": "^2.29.3",
+    "ws": "^8.19.0"
+  }
+}

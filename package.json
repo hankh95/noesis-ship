@@ -1,17 +1,25 @@
 {
   "name": "noesis-ship",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Pluggable multi-agent communication platform — NATS core with WebSocket, MCP, and HTTP/SSE adapters",
   "private": true,
   "workspaces": [
-    "adapters/websocket"
+    "packages/shared",
+    "packages/relay",
+    "packages/daemon",
+    "packages/fleet-log",
+    "packages/mcp-server"
   ],
   "scripts": {
-    "start": "cd adapters/websocket && node -r dotenv/config server.js",
-    "daemon": "cd adapters/websocket && node agent-daemon.js",
-    "daemon:v2": "cd adapters/websocket && node agent-daemon-v2.mjs",
-    "mcp": "cd adapters/websocket && node mcp-server.js",
-    "test:ws": "cd adapters/websocket && node test-ws.js"
+    "start": "npm start --workspace=@noesis-ship/relay",
+    "daemon": "npm start --workspace=@noesis-ship/daemon",
+    "daemon:v2": "node packages/daemon/agent-daemon-v2.mjs",
+    "fleet-log": "npm start --workspace=@noesis-ship/fleet-log",
+    "mcp": "npm start --workspace=@noesis-ship/mcp-server",
+    "test": "npm test --workspace=@noesis-ship/shared && npm test --workspace=@noesis-ship/daemon",
+    "test:shared": "npm test --workspace=@noesis-ship/shared",
+    "test:daemon": "npm test --workspace=@noesis-ship/daemon",
+    "test:relay": "npm test --workspace=@noesis-ship/relay"
   },
   "author": "Congruent Systems PBC",
   "license": "ISC"

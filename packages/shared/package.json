@@ -1,0 +1,13 @@
+{
+  "name": "@noesis-ship/shared",
+  "version": "0.1.0",
+  "description": "Shared utilities for noesis-ship packages — NATS helpers, config, wire protocol",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "nats": "^2.29.3"
+  }
+}

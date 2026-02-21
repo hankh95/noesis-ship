@@ -1,10 +1,10 @@
 ---
 id: EXP-017
 title: "Open-Source Packaging & Component Isolation"
-status: backlog
+status: review
 created: 2026-02-21
 priority: medium
-assignee: unassigned
+assignee: M5
 tags: [infrastructure, open-source, packaging, docker]
 related: [EXP-010, EXP-012]
 ---
