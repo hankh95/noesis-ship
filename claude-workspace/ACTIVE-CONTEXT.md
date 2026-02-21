@@ -1,18 +1,18 @@
 # Noesis Ship Active Context
 
 **Updated:** 2026-02-21
-**Last Agent:** DGX
+**Last Agent:** M5
 
 ---
 
 ## Current Position
 
 **Repository:** hankh95/noesis-ship
-**Status:** ✅ EXP-010 Phase 2 Complete (Mini + DGX) — M5 Pending
+**Status:** ✅ EXP-010 Phase 2 Complete (ALL AGENTS CONNECTED) — Phase 3 Testing Next
 
 ### Infrastructure Update — EXP-010 Centralization
 
-**Status:** Phase 1 complete (Mini ✅), Phase 2 in progress (DGX ✅, M5 ⏳)
+**Status:** Phase 2 complete (Mini ✅, DGX ✅, M5 ✅) — Phase 3 testing next
 
 **Architecture Change:** Moving from distributed NATS (each machine runs its own) to centralized NATS (one central server, all agents connect remotely)
 
@@ -35,13 +35,14 @@
   - Local NATS/WebSocket stopped and disabled
   - Systemd service updated and running
   - Verified connection via logs: "Connected to bridge at ws://100.113.140.45:3100"
-- **M5 (⏳ PENDING):** Needs to update BRIDGE_URL and restart agent-daemon
-  - Update `~/Library/LaunchAgents/com.congruentsystems.noesis-ship-agent-daemon.plist`
-  - Change `BRIDGE_URL` to `ws://100.113.140.45:3100`
-  - Stop local NATS/WebSocket (if running)
-  - Restart agent-daemon
+- **M5 (✅ COMPLETE):** Agent-daemon → `ws://100.113.140.45:3100`
+  - Local WebSocket relay stopped and unloaded
+  - New agent-daemon plist created and loaded
+  - MCP config updated to point to Mini
+  - Verified connection via logs: "Connected to bridge at ws://100.113.140.45:3100"
+  - Test message sent via HTTP API: "M5 reporting in"
 
-**Phase 3 — Testing (⏳ PENDING):**
+**Phase 3 — Testing (⏳ READY):**
 - NATS pub/sub test across all machines
 - Ships Comm iOS app voice testing
 - Verify fleet coordination (#fleet, #m5, #dgx, #mini channels)
@@ -122,7 +123,7 @@ node server.js
 |--------|-------------|------|--------|
 | Mini (Mac Mini M4) | 100.113.140.45 | **Central NATS server** | ✅ Running |
 | DGX (DGX Spark) | 100.72.55.109 | Client | ✅ Connected |
-| M5 (MacBook Pro) | 100.109.27.49 | Client | ⏳ Setup pending |
+| M5 (MacBook Pro) | 100.109.27.49 | Client | ✅ Connected |
 
 ### Mini Central Services
 
