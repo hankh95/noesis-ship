@@ -247,6 +247,65 @@ launchctl load ~/Library/LaunchAgents/com.congruentsystems.noesis-ship-agent-dae
 
 ## Recent Voyages
 
+### 2026-02-21 — DGX — nusy-product-team PR Review & Merge (5 PRs)
+
+**Context**: M5 created 5 PRs (EXP-862, EXP-863, EXP-864, EXP-894/895, EXP-899) but all were failing CI at exactly 3 seconds.
+
+**What was completed:**
+1. **PR Review**: Reviewed all 5 PRs for code quality and merge conflicts
+   - PR #85 (EXP-894/895): Being EventBus integration (402-line mixin, 1479 additions)
+   - PR #86 (EXP-899): KBDD coverage signal for V12 SignalFusion (155 lines, 9th signal)
+   - PR #87 (EXP-862): Fix 4 Step5 NER tests for V12 compatibility
+   - PR #88 (EXP-863): Fix 2 learning pipeline persistence tests
+   - PR #89 (EXP-864): Fix 3 fractal tier2 tests for V12 signal fusion
+
+2. **Merge Conflict Resolution**: Fixed TRAINING_PROGRESS.md corruption (twice)
+   - File had hundreds of git conflict markers (`<<<<<<< Updated upstream`)
+   - Cleaned file, committed to main
+   - Rebased all 5 PRs on fixed main (twice - file got corrupted again during rebase)
+
+3. **CI Investigation**: Determined CI failure is infrastructure issue, not code
+   - Ran tests locally: all pass (26/26 tests in 6.8s for PR #87)
+   - Verified dependencies exist (requirements-core.txt, lint_ttl.py)
+   - CI failing at exactly 3 seconds = GitHub Actions runner/environment failure
+
+4. **Admin Bypass Merge**: Merged all 5 PRs with admin bypass (user approved)
+   ```bash
+   gh pr merge 87 --admin --squash  # Step5 NER tests
+   gh pr merge 88 --admin --squash  # Persistence tests
+   gh pr merge 89 --admin --squash  # Fractal tier2 tests
+   gh pr merge 85 --admin --squash  # Being EventBus (foundational)
+   gh pr merge 86 --admin --squash  # KBDD signal
+   ```
+
+5. **Created EXP-911**: Fix GitHub Actions CI Infrastructure Failure
+   - Documented systematic CI failure pattern
+   - Evidence: tests pass locally, fail in CI at 3s
+   - Investigation plan: runner logs, disk space (related to EXP-855), Python env
+   - Priority: High (blocks all PR merges)
+
+**Files modified** (nusy-product-team):
+- `beings/santiago-highschool-v12.1/TRAINING_PROGRESS.md` (cleaned merge conflicts)
+- `kanban-work/expeditions/EXP-911-*.md` (created with detailed analysis)
+- Multiple test files, EventBus implementation, KBDD signal (via merged PRs)
+
+**Key decisions:**
+- Merge PRs with admin bypass due to CI infrastructure failure (not code issues)
+- Create expedition to fix CI rather than leaving it broken
+- Priority: High on EXP-911 because it blocks normal development workflow
+
+**What next session should do:**
+- **EXP-911**: Investigate GitHub Actions runner logs for 3-second failures
+- Check disk space issues (EXP-855 switched to core-only requirements for space)
+- Verify Python/pip environment initialization in CI
+- Test fix with new PR to confirm CI working again
+
+**Blockers:** None — EXP-911 is ready to start
+
+**Training Status**: santiago-highschool-v12.1 training complete ✅ (61 docs, 34,460 triples, 100% CQ coverage)
+
+---
+
 ### 2026-02-21 — Mini — Agent-to-Agent Comms Fix
 
 **What was completed:**
