@@ -11,11 +11,16 @@ relates_to:
   - wiki/beings/directory.md
 created: 2025-12-06
 updated: 2025-12-07
+reviewed: 2026-02-21
 expedition: EXP-156
 tags: [nats, messaging, channels, beings, real-time]
 ---
 
 # NATS Channels for Being Communication
+
+> **Note:** This is a reference document from the NuSy project (pre-noesis-ship). The `nusy.*` subject namespace shown below has been superseded by `ship.*` in the noesis-ship implementation. See `nusy-implementations.md` for the namespace mapping.
+>
+> **Last Reviewed:** 2026-02-21 (CHORE-001) — Accurate as historical reference.
 
 ## Overview
 

@@ -2,7 +2,7 @@
 id: CHORE-001
 title: "Review NuSy reference docs for accuracy after v0.2.0 stabilization"
 type: chore
-status: backlog
+status: done
 priority: low
 created: 2026-02-21
 depends_on: [EXP-001, EXP-003]
@@ -30,12 +30,12 @@ After noesis-ship reaches v0.2.0 (stable NATS integration), review these referen
 
 ## Tasks
 
-- [ ] Re-read both reference docs
-- [ ] Compare proposed `ship.*` namespace with actual implementation
-- [ ] Verify performance benchmarks are still accurate
-- [ ] Check if NuSy has migrated to noesis-ship (see EXP-893-897 in nusy-product-team)
-- [ ] Update docs with any corrections
-- [ ] Add "Last Reviewed" date to both files
+- [x] Re-read both reference docs
+- [x] Compare proposed `ship.*` namespace with actual implementation — `ship.channel.*` confirmed in server.js, fleet-log-writer.js
+- [x] Verify performance benchmarks are still accurate — 0.4ms roundtrip correctly attributed to NuSy source
+- [x] Check if NuSy has migrated to noesis-ship — EXP-895 still in backlog, migration pending
+- [x] Update docs with any corrections — added namespace note to architecture doc, updated integration status table
+- [x] Add "Last Reviewed" date to both files — added `reviewed: 2026-02-21` to frontmatter
 
 ## Success Criteria
 
