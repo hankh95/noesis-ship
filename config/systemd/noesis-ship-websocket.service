@@ -1,0 +1,38 @@
+[Unit]
+Description=Noesis Ship WebSocket Adapter
+Documentation=https://github.com/hankh95/noesis-ship
+After=network.target nats-server.service
+Wants=nats-server.service
+
+[Service]
+Type=simple
+User=hankh959
+Group=hankh959
+WorkingDirectory=/home/hankh959/projects/noesis-ship/adapters/websocket
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=noesis-ship-ws
+
+# Environment variables
+Environment=NODE_ENV=production
+Environment=WS_PORT=3100
+Environment=MACHINE_NAME=DGX
+Environment=AGENTS=dgx:DGX,mini:Mini,m5:M5,copilot:Copilot
+Environment=NATS_URL=nats://localhost:4222
+
+# Security
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/hankh959/projects/noesis-ship
+
+# Resource limits
+LimitNOFILE=4096
+LimitNPROC=512
+
+[Install]
+WantedBy=multi-user.target

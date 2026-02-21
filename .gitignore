@@ -43,3 +43,9 @@ Thumbs.db
 # Environment
 .env
 .env.local
+
+# Logs and data
+logs/
+*.log
+data/
+jetstream/
