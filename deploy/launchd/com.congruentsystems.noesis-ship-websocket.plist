@@ -5,7 +5,7 @@
   Noesis Ship — WebSocket Relay Server (macOS launchd)
 
   Install:
-    cp config/launchd/com.congruentsystems.noesis-ship-websocket.plist ~/Library/LaunchAgents/
+    cp deploy/launchd/com.congruentsystems.noesis-ship-websocket.plist ~/Library/LaunchAgents/
     # Edit paths: replace __HOME__ with your actual home directory
     launchctl load ~/Library/LaunchAgents/com.congruentsystems.noesis-ship-websocket.plist
 
@@ -20,19 +20,11 @@
     <key>ProgramArguments</key>
     <array>
         <string>/opt/homebrew/bin/node</string>
-        <string>__HOME__/projects/noesis-ship/adapters/websocket/server.js</string>
+        <string>__HOME__/Projects/noesis-ship/packages/relay/server.js</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>__HOME__/projects/noesis-ship/adapters/websocket</string>
-
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>NODE_ENV</key>
-        <string>production</string>
-        <key>DOTENV_CONFIG_PATH</key>
-        <string>__HOME__/projects/noesis-ship/adapters/websocket/.env</string>
-    </dict>
+    <string>__HOME__/Projects/noesis-ship/packages/relay</string>
 
     <key>RunAtLoad</key>
     <true/>

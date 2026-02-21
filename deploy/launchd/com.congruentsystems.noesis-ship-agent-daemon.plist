@@ -7,13 +7,19 @@
   Spawns Claude Code agents in response to messages from the WebSocket bridge.
 
   Install:
-    cp config/launchd/com.congruentsystems.noesis-ship-agent-daemon.plist ~/Library/LaunchAgents/
+    cp deploy/launchd/com.congruentsystems.noesis-ship-agent-daemon.plist ~/Library/LaunchAgents/
     # Edit: replace __HOME__ with your home dir, __MACHINE__ with machine name
     launchctl load ~/Library/LaunchAgents/com.congruentsystems.noesis-ship-agent-daemon.plist
 
-  Uninstall:
-    launchctl unload ~/Library/LaunchAgents/com.congruentsystems.noesis-ship-agent-daemon.plist
-    rm ~/Library/LaunchAgents/com.congruentsystems.noesis-ship-agent-daemon.plist
+  Claude wrapper:
+    The CLAUDE_BIN should point to a stable wrapper script (not a versioned
+    VSCode extension path). Create ~/.local/bin/claude:
+
+      #!/bin/bash
+      CLAUDE_BIN=$(ls -1t "$HOME/.vscode/extensions/anthropic.claude-code-"*"-darwin-arm64/resources/native-binary/claude" 2>/dev/null | head -1)
+      exec "$CLAUDE_BIN" "$@"
+
+    chmod +x ~/.local/bin/claude
 -->
 <dict>
     <key>Label</key>
@@ -22,20 +28,20 @@
     <key>ProgramArguments</key>
     <array>
         <string>/opt/homebrew/bin/node</string>
-        <string>__HOME__/projects/noesis-ship/adapters/websocket/agent-daemon.js</string>
+        <string>__HOME__/Projects/noesis-ship/packages/daemon/agent-daemon.js</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>__HOME__/projects/noesis-ship/adapters/websocket</string>
+    <string>__HOME__/Projects/noesis-ship/packages/daemon</string>
 
     <key>EnvironmentVariables</key>
     <dict>
         <key>BRIDGE_URL</key>
         <string>ws://localhost:3100</string>
         <key>PROJECT_DIR</key>
-        <string>__HOME__/projects/nusy-product-team</string>
+        <string>__HOME__/Projects/nusy-product-team</string>
         <key>CLAUDE_BIN</key>
-        <string>/opt/homebrew/bin/claude</string>
+        <string>__HOME__/.local/bin/claude</string>
         <key>AGENT_NAME</key>
         <string>__MACHINE__</string>
         <key>MAX_TURNS</key>
