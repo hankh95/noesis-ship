@@ -1,0 +1,16 @@
+{
+  "name": "@noesis-ship/chat",
+  "version": "0.1.0",
+  "description": "Chat messaging service — HTTP API backed by NATS pub/sub",
+  "main": "chat-service.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node -r dotenv/config chat-service.js",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "@noesis-ship/shared": "0.1.0",
+    "dotenv": "^16.4.7",
+    "nats": "^2.29.3"
+  }
+}
