@@ -1,0 +1,14 @@
+{
+  "name": "@noesis-ship/fleet-status",
+  "version": "0.1.0",
+  "description": "Fleet health monitoring service — polls NATS monitoring and service endpoints",
+  "main": "fleet-status-service.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node -r dotenv/config fleet-status-service.js",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  }
+}

@@ -8,7 +8,9 @@
     "packages/relay",
     "packages/daemon",
     "packages/fleet-log",
-    "packages/mcp-server"
+    "packages/mcp-server",
+    "packages/chat",
+    "packages/fleet-status"
   ],
   "scripts": {
     "start": "npm start --workspace=@noesis-ship/relay",
@@ -16,10 +18,14 @@
     "daemon:v2": "node packages/daemon/agent-daemon-v2.mjs",
     "fleet-log": "npm start --workspace=@noesis-ship/fleet-log",
     "mcp": "npm start --workspace=@noesis-ship/mcp-server",
+    "chat": "npm start --workspace=@noesis-ship/chat",
+    "fleet-status": "npm start --workspace=@noesis-ship/fleet-status",
     "test": "npm test --workspace=@noesis-ship/shared && npm test --workspace=@noesis-ship/daemon",
     "test:shared": "npm test --workspace=@noesis-ship/shared",
     "test:daemon": "npm test --workspace=@noesis-ship/daemon",
-    "test:relay": "npm test --workspace=@noesis-ship/relay"
+    "test:relay": "npm test --workspace=@noesis-ship/relay",
+    "test:chat": "npm test --workspace=@noesis-ship/chat",
+    "test:fleet-status": "npm test --workspace=@noesis-ship/fleet-status"
   },
   "author": "Congruent Systems PBC",
   "license": "ISC"
