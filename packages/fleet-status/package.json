@@ -9,7 +9,6 @@
     "test": "node test.js"
   },
   "dependencies": {
-    "@noesis-ship/shared": "0.1.0",
     "dotenv": "^16.4.7"
   }
 }

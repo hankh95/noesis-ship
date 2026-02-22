@@ -22,7 +22,7 @@ const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const { connectNATS, publishJSON, decodeJSON } = require("@noesis-ship/shared/nats-helpers");
-const { buildMessage, channelSubject, isFromSelf } = require("@noesis-ship/shared/wire-protocol");
+const { buildMessage, channelSubject } = require("@noesis-ship/shared/wire-protocol");
 
 // ─── ChatService ─────────────────────────────────────────────────────────────
 
@@ -66,7 +66,7 @@ class ChatService {
     if (limit && limit < hist.length) {
       return hist.slice(-limit);
     }
-    return hist;
+    return [...hist];
   }
 
   // ─── Markdown Persistence ────────────────────────────────────────────────
@@ -163,9 +163,20 @@ class ChatService {
   }
 
   handleSend(req, res) {
+    const MAX_BODY = 64 * 1024; // 64 KB
     let body = "";
-    req.on("data", (chunk) => (body += chunk));
+    let aborted = false;
+    req.on("data", (chunk) => {
+      body += chunk;
+      if (body.length > MAX_BODY && !aborted) {
+        aborted = true;
+        res.writeHead(413, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Payload too large" }));
+        req.destroy();
+      }
+    });
     req.on("end", () => {
+      if (aborted) return;
       let parsed;
       try {
         parsed = JSON.parse(body);
