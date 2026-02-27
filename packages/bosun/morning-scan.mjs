@@ -352,7 +352,41 @@ function formatContext(context) {
 }
 
 /**
+ * Call local Ollama LLM (Qwen-72B) to reason about priorities and generate proposals.
+ * Uses OpenAI-compatible API at localhost:11434/v1
+ */
+async function generateProposalsLocal(context, { reasoningModel, ollamaBaseUrl }) {
+  const baseUrl = ollamaBaseUrl || "http://localhost:11434/v1";
+  const model = reasoningModel || "qwen2.5:72b";
+
+  const userContent = formatContext(context);
+
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: BOSUN_SYSTEM_PROMPT },
+        { role: "user", content: userContent }
+      ],
+      max_tokens: 2048,
+      temperature: 0.7,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Ollama API error: ${response.status} ${await response.text()}`);
+  }
+
+  const data = await response.json();
+  const text = data.choices[0]?.message?.content || "";
+  return parseProposals(text);
+}
+
+/**
  * Call Claude API to reason about priorities and generate proposals.
+ * (Fallback when local LLM unavailable)
  */
 async function generateProposals(context, { reasoningModel, anthropicApiKey }) {
   const Anthropic = (await import("@anthropic-ai/sdk")).default;
@@ -406,30 +440,52 @@ export function parseProposals(text) {
 
 /**
  * Run a complete morning scan: gather → reason → return proposals.
+ * Priority: Local Ollama (Qwen-72B) → Claude API fallback → Raw backlog
  */
-export async function runMorningScan({ projectDir, reasoningModel, anthropicApiKey, machineName, fleetStatus }) {
+export async function runMorningScan({ projectDir, reasoningModel, anthropicApiKey, machineName, fleetStatus, ollamaBaseUrl }) {
   // Phase 1: Gather
   const context = await gatherFleetContext(projectDir, fleetStatus);
 
-  // Phase 2: Reason
+  // Phase 2: Reason (local LLM first, then API fallback)
   let result;
-  if (anthropicApiKey) {
-    result = await generateProposals(context, { reasoningModel, anthropicApiKey });
-  } else {
-    // No API key — return raw context for manual review
-    result = {
-      proposals: context.kanban.backlog.slice(0, 3).map((item) => ({
-        exp: item.id,
-        title: item.title,
-        priority: item.priority,
-        agent: machineName,
-        reasoning: "Auto-picked from backlog (no API key for reasoning)",
-      })),
-      staleExpeditions: [],
-      needsReview: [],
-      reasoning: "No Anthropic API key — returning top backlog items without LLM reasoning",
-      fleetSummary: `${context.kanban.inProgress.length} in-progress, ${context.kanban.backlog.length} in backlog`,
-    };
+  const localModel = process.env.LOCAL_REASONING_MODEL || "qwen2.5:72b";
+  const localUrl = ollamaBaseUrl || process.env.OLLAMA_BASE_URL || "http://localhost:11434/v1";
+
+  // Try local Ollama first (free, fast)
+  try {
+    result = await generateProposalsLocal(context, { reasoningModel: localModel, ollamaBaseUrl: localUrl });
+    result.llmSource = "local-ollama";
+  } catch (localErr) {
+    console.log(`[Bosun] Local LLM failed: ${localErr.message}, trying API fallback...`);
+
+    // Fall back to Claude API if local fails
+    if (anthropicApiKey) {
+      try {
+        result = await generateProposals(context, { reasoningModel, anthropicApiKey });
+        result.llmSource = "anthropic-api";
+      } catch (apiErr) {
+        console.log(`[Bosun] API fallback also failed: ${apiErr.message}`);
+        result = null;
+      }
+    }
+
+    // No LLM available — return raw context for manual review
+    if (!result) {
+      result = {
+        proposals: context.kanban.backlog.slice(0, 3).map((item) => ({
+          exp: item.id,
+          title: item.title,
+          priority: item.priority,
+          agent: machineName,
+          reasoning: "Auto-picked from backlog (no LLM available for reasoning)",
+        })),
+        staleExpeditions: [],
+        needsReview: [],
+        reasoning: "No LLM available — returning top backlog items without reasoning",
+        fleetSummary: `${context.kanban.inProgress.length} in-progress, ${context.kanban.backlog.length} in backlog`,
+        llmSource: "none",
+      };
+    }
   }
 
   return {

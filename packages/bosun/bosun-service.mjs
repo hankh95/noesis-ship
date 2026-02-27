@@ -58,6 +58,9 @@ const config = {
   scanInterval: parseInt(process.env.SCAN_INTERVAL_MINUTES || "30", 10) * 60_000,
   scanOnStartup: process.env.SCAN_ON_STARTUP !== "false",
   machineName: process.env.MACHINE_NAME || os.hostname().split(".")[0],
+  // LLM config: Local Ollama first (Qwen-72B), API fallback
+  ollamaBaseUrl: process.env.OLLAMA_BASE_URL || "http://localhost:11434/v1",
+  localReasoningModel: process.env.LOCAL_REASONING_MODEL || "qwen2.5:72b",
   reasoningModel: process.env.REASONING_MODEL || "claude-sonnet-4-6",
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
 };
@@ -97,6 +100,7 @@ async function doScan() {
       anthropicApiKey: config.anthropicApiKey,
       machineName: config.machineName,
       fleetStatus: latestFleetStatus,
+      ollamaBaseUrl: config.ollamaBaseUrl,
     });
 
     pendingProposals = result.proposals || [];
@@ -314,7 +318,8 @@ async function main() {
   log("Starting Noesis Ship LLM Bosun...");
   log(`Machine: ${config.machineName}`);
   log(`Project: ${config.projectDir}`);
-  log(`Model: ${config.reasoningModel}`);
+  log(`Local LLM: ${config.localReasoningModel} @ ${config.ollamaBaseUrl}`);
+  log(`Fallback: ${config.reasoningModel} (API)`);
   log(`NATS: ${config.natsUrl}`);
   if (dryRun) log("DRY RUN mode — no NATS publishing, no spawning");
 
