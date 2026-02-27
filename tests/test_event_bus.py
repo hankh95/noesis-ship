@@ -1,6 +1,7 @@
 """Tests for the EventBus (local fallback mode — no NATS required)."""
 
 import asyncio
+from unittest.mock import patch, AsyncMock
 import pytest
 from noesis_ship.core.event_bus import (
     EventBus,
@@ -266,3 +267,64 @@ class TestFleetAlerts:
     async def test_pr_reviewed_does_not_raise(self):
         result = await FleetAlerts.pr_reviewed(pr=175, reviewer="DGX", passed=True)
         assert isinstance(result, bool)
+
+
+class TestFleetAlertsPayload:
+    """Test that FleetAlerts methods pass correct payloads to _publish."""
+
+    @pytest.mark.asyncio
+    async def test_pr_created_payload(self):
+        with patch.object(FleetAlerts, "_publish", new_callable=AsyncMock) as mock_pub:
+            mock_pub.return_value = True
+            await FleetAlerts.pr_created(pr=175, exp="EXP-994", agent="Mini")
+            mock_pub.assert_called_once_with("pr_created", {
+                "pr": 175, "exp": "EXP-994", "agent": "Mini",
+            })
+
+    @pytest.mark.asyncio
+    async def test_ci_failed_payload(self):
+        with patch.object(FleetAlerts, "_publish", new_callable=AsyncMock) as mock_pub:
+            mock_pub.return_value = True
+            await FleetAlerts.ci_failed(pr=176, exp="EXP-995", details="lint error")
+            mock_pub.assert_called_once_with("ci_failed", {
+                "pr": 176, "exp": "EXP-995", "details": "lint error",
+            })
+
+    @pytest.mark.asyncio
+    async def test_agent_stuck_payload(self):
+        with patch.object(FleetAlerts, "_publish", new_callable=AsyncMock) as mock_pub:
+            mock_pub.return_value = True
+            await FleetAlerts.agent_stuck(
+                agent="DGX", exp="EXP-994", session="exp-994", idle_minutes=18
+            )
+            mock_pub.assert_called_once_with("agent_stuck", {
+                "agent": "DGX", "exp": "EXP-994", "session": "exp-994",
+                "idle_minutes": 18,
+            })
+
+    @pytest.mark.asyncio
+    async def test_acf_regression_payload_negative_delta(self):
+        """Negative delta should publish as acf_regression."""
+        with patch.object(FleetAlerts, "_publish", new_callable=AsyncMock) as mock_pub:
+            mock_pub.return_value = True
+            await FleetAlerts.acf_regression(
+                pr=176, exp="EXP-995", delta=-0.02, being="santiago-toddler-v12"
+            )
+            mock_pub.assert_called_once_with("acf_regression", {
+                "pr": 176, "exp": "EXP-995", "delta": -0.02,
+                "being": "santiago-toddler-v12",
+            })
+
+    @pytest.mark.asyncio
+    async def test_acf_regression_positive_delta_redirects(self):
+        """Positive delta on acf_regression should redirect to acf_delta."""
+        with patch.object(FleetAlerts, "_publish", new_callable=AsyncMock) as mock_pub:
+            mock_pub.return_value = True
+            await FleetAlerts.acf_regression(
+                pr=175, exp="EXP-994", delta=0.03, being="santiago-toddler-v12"
+            )
+            # Should have been routed to acf_delta instead
+            mock_pub.assert_called_once_with("acf_delta", {
+                "pr": 175, "exp": "EXP-994", "delta": 0.03,
+                "being": "santiago-toddler-v12",
+            })

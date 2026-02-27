@@ -21,7 +21,7 @@ Categories:
 import json
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional, Callable, List
 from dataclasses import dataclass, asdict
@@ -51,7 +51,7 @@ class ShipEvent:
                correlation_id: Optional[str] = None) -> "ShipEvent":
         return cls(
             event_type=event_type,
-            timestamp=datetime.utcnow().isoformat() + "Z",
+            timestamp=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             source=source,
             payload=payload,
             correlation_id=correlation_id or str(uuid.uuid4())[:8]
@@ -744,7 +744,7 @@ class FleetAlerts:
         alert = {
             "type": "fleet_alert",
             "alertType": alert_type,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
             **payload,
         }
 
@@ -757,9 +757,10 @@ class FleetAlerts:
                 logger.info(f"Fleet alert published: {alert_type}")
                 return True
             except Exception as e:
-                logger.error(f"Failed to publish fleet alert {alert_type}: {e}")
+                logger.error(f"Fleet alert (publish failed): {alert_type}: {e}")
+                return False
 
-        logger.info(f"Fleet alert (local): {alert_type} - {payload}")
+        logger.info(f"Fleet alert (not connected): {alert_type} - {payload}")
         return False
 
     @staticmethod
@@ -813,7 +814,15 @@ class FleetAlerts:
     @staticmethod
     async def acf_regression(pr: int, exp: str, delta: float,
                              being: str) -> bool:
-        """Alert: negative ACF delta (red flag)."""
+        """Alert: negative ACF delta (red flag). Delta should be negative."""
+        if delta >= 0:
+            logger.warning(
+                f"acf_regression called with non-negative delta={delta}, "
+                "routing to acf_delta instead"
+            )
+            return await FleetAlerts.acf_delta(
+                pr=pr, exp=exp, delta=delta, being=being
+            )
         return await FleetAlerts._publish("acf_regression", {
             "pr": pr, "exp": exp, "delta": delta, "being": being,
         })
