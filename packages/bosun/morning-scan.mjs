@@ -11,7 +11,7 @@
 
 import { execFile as execFileCb } from "child_process";
 import { promisify } from "util";
-import { readFile } from "fs/promises";
+import { readFile, readdir } from "fs/promises";
 import path from "path";
 
 const execFile = promisify(execFileCb);
@@ -20,24 +20,42 @@ const execFile = promisify(execFileCb);
 
 const BOSUN_SYSTEM_PROMPT = `You are the Bosun of a neurosymbolic AI research fleet. Your job is to propose the highest-impact work items for the fleet's agents.
 
-You receive:
-- Kanban state (backlog expeditions with priorities)
-- Fleet health (which agents are busy/available, active tmux sessions)
-- ACF history (recent being performance scores — ACF is the reward signal)
-- Active hypotheses (research questions being tested)
-- Expedition facts (file references, ages, missing files — YOU decide staleness)
+You receive data from TWO boards:
+
+1. **Development Board** (kanban-work/) — nautical preset
+   - States: backlog → planning → ready → in_progress → review → done
+   - Item types: expeditions, chores, ideas
+   - WIP limit: 4 underway
+
+2. **Research Board** (research/) — HDD preset
+   - States: draft → active → complete | abandoned
+   - Item types: hypotheses, experiments, papers, literature, measures, ideas
+   - Research items use HDD phases: discovery → design → execution → analysis → writing
+   - WIP limit: 5 active
+
+Also: Fleet health, ACF history, active hypotheses, expedition facts.
 
 Rules:
-- Maximum 3 proposals per scan
-- Respect WIP limits: max 2 expeditions per agent, max 5 total in-progress
-- High-priority and critical expeditions first
-- Match expedition tags to agent capabilities:
-  - DGX: GPU training, large models, ACF measurement, heavy computation
-  - M5: Code quality, architecture, automation, testing, documentation
-  - Mini: Infrastructure, CI/CD, monitoring, fleet tooling
-- Never propose work that duplicates in-progress expeditions
+- Maximum 3 proposals per scan (can be from either board)
+- Respect WIP limits per board
+- High-priority and critical items first
+- Match work to agent capabilities and HDD phase:
+  - DGX: GPU training, large models, ACF measurement, heavy computation, **analysis phase**
+  - M5: Code quality, architecture, automation, testing, documentation, **execution phase (code implementation)**
+  - Mini: Infrastructure, CI/CD, monitoring, fleet tooling, **execution phase (infra)**
+  - Architect: **discovery & design phases** (system design, experiment protocol)
+- Never propose work that duplicates in-progress items
 - If ACF scores dropped recently, prioritize investigations/fixes
 - If all agents are busy and at WIP limit, propose nothing
+
+HDD Phase Routing:
+| Phase | Agent | Action |
+|-------|-------|--------|
+| discovery | Architect/DGX | Literature review, hypothesis refinement |
+| design | Architect/DGX | Experiment protocol, measures definition |
+| execution | M5/Mini | Implementation, data collection |
+| analysis | DGX | Compare results to targets, statistics |
+| writing | Any | Draft paper sections |
 
 Staleness analysis (from expedition facts):
 - Missing files ALONE don't mean stale — files may have been renamed or the expedition is about creating them
@@ -117,6 +135,82 @@ async function getKanbanState(projectDir) {
 }
 
 /**
+ * Get research board state: HDD items (hypotheses, experiments, papers, etc.)
+ *
+ * NOTE: yurtle-kanban `list` command does not yet support --board flag.
+ * Until that's added, we read research files directly from the filesystem.
+ * This is reliable since research items are markdown files with frontmatter.
+ */
+async function getResearchBoardState(projectDir) {
+  // Read research files directly (5 directories — hypotheses excluded, see readResearchFiles note)
+  // Future: When yurtle-kanban adds `list --board research`, we can switch to CLI
+  try {
+    return await readResearchFiles(projectDir);
+  } catch {
+    return { draft: [], active: [], complete: [], abandoned: [], source: "error" };
+  }
+}
+
+/**
+ * Fallback: read research files (experiments, ideas, etc.) and parse frontmatter.
+ *
+ * NOTE: hypotheses use TTL (Turtle RDF) frontmatter, not YAML.
+ * parseSimpleFrontmatter() skips @prefix and <> lines, so all hypothesis
+ * files would be silently dropped. Excluded until a TTL parser is added.
+ * TODO: Add TTL frontmatter parser to include hypotheses (follow-up ticket).
+ */
+export async function readResearchFiles(projectDir) {
+  const draft = [];
+  const active = [];
+  const complete = [];
+  const abandoned = [];
+
+  const dirs = [
+    // { path: ..., prefix: "H", type: "hypothesis" },  // TODO: uses TTL frontmatter — needs TTL parser
+    { path: path.join(projectDir, "research", "experiments"), prefix: "EXPR-", type: "experiment" },
+    { path: path.join(projectDir, "research", "ideas"), prefix: "IDEA-", type: "idea" },
+    { path: path.join(projectDir, "research", "literature"), prefix: "LIT-", type: "literature" },
+    { path: path.join(projectDir, "research", "papers"), prefix: "PAPER-", type: "paper" },
+    { path: path.join(projectDir, "research", "measures"), prefix: "M-", type: "measure" },
+  ];
+
+  for (const { path: dirPath, prefix, type } of dirs) {
+    try {
+      const files = await readdir(dirPath);
+      for (const f of files) {
+        if (!f.endsWith(".md") || f.startsWith(".")) continue;
+        try {
+          const content = await readFile(path.join(dirPath, f), "utf-8");
+          const fm = parseSimpleFrontmatter(content);
+          if (!fm.id && !fm.title) continue;
+
+          const item = {
+            id: fm.id || `${prefix}${f.replace(".md", "")}`,
+            title: fm.title || f,
+            status: fm.status || "draft",
+            phase: fm.phase || null,
+            type,
+            assignee: fm.assignee || null,
+            tags: fm.tags || [],
+          };
+
+          if (item.status === "draft") draft.push(item);
+          else if (item.status === "active") active.push(item);
+          else if (item.status === "complete" || item.status === "completed") complete.push(item);
+          else if (item.status === "abandoned") abandoned.push(item);
+        } catch {
+          // Skip unreadable files
+        }
+      }
+    } catch {
+      // Directory doesn't exist
+    }
+  }
+
+  return { draft, active, complete, abandoned, source: "file-glob" };
+}
+
+/**
  * Fallback: read expedition files and parse frontmatter.
  */
 async function readExpeditionFiles(projectDir) {
@@ -125,7 +219,6 @@ async function readExpeditionFiles(projectDir) {
   const inProgress = [];
 
   try {
-    const { readdir } = await import("fs/promises");
     const files = await readdir(expDir);
 
     for (const f of files) {
@@ -259,8 +352,9 @@ async function getExpeditionFacts(projectDir) {
  * Gather all fleet context in parallel.
  */
 export async function gatherFleetContext(projectDir, cachedFleetStatus) {
-  const [kanban, fleet, acf, hypotheses, expeditionFacts] = await Promise.all([
+  const [kanban, research, fleet, acf, hypotheses, expeditionFacts] = await Promise.all([
     getKanbanState(projectDir),
+    getResearchBoardState(projectDir),
     getFleetHealth(),
     getAcfHistory(projectDir),
     getHypotheses(projectDir),
@@ -269,6 +363,7 @@ export async function gatherFleetContext(projectDir, cachedFleetStatus) {
 
   return {
     kanban,
+    research,  // HDD research board items
     fleet: cachedFleetStatus || fleet,
     acf,
     hypotheses,
@@ -284,9 +379,9 @@ export async function gatherFleetContext(projectDir, cachedFleetStatus) {
 function formatContext(context) {
   const sections = [];
 
-  // Kanban
+  // Development Board (Kanban)
   const { backlog, inProgress } = context.kanban;
-  sections.push("## Kanban State");
+  sections.push("## Development Board (kanban-work/)");
   sections.push(`In-progress (${inProgress.length}):`);
   for (const item of inProgress) {
     sections.push(`  - ${item.id}: ${item.title} [${item.priority}] assigned=${item.assignee || "none"}`);
@@ -294,6 +389,31 @@ function formatContext(context) {
   sections.push(`Backlog (${backlog.length}):`);
   for (const item of backlog.slice(0, 15)) {
     sections.push(`  - ${item.id}: ${item.title} [${item.priority}] tags=${(item.tags || []).join(",")}`);
+  }
+
+  // Research Board (HDD items)
+  if (context.research) {
+    const { draft = [], active = [], complete = [], abandoned = [] } = context.research;
+    sections.push("\n## Research Board (research/) — HDD Items");
+    sections.push("Uses HDD states: draft → active → complete | abandoned");
+    sections.push(`Active (${active.length}):`);
+    for (const item of active.slice(0, 10)) {
+      sections.push(`  - ${item.id}: ${item.title} [phase=${item.phase || "?"}] type=${item.type || "?"} assigned=${item.assignee || "none"}`);
+    }
+    sections.push(`Draft (${draft.length}):`);
+    for (const item of draft.slice(0, 10)) {
+      sections.push(`  - ${item.id}: ${item.title} type=${item.type || "?"}`);
+    }
+    sections.push(`Recently complete (${complete.length}):`);
+    for (const item of complete.slice(0, 5)) {
+      sections.push(`  - ${item.id}: ${item.title}`);
+    }
+    if (abandoned.length > 0) {
+      sections.push(`Abandoned (${abandoned.length}) — do NOT re-propose:`);
+      for (const item of abandoned.slice(0, 5)) {
+        sections.push(`  - ${item.id}: ${item.title}`);
+      }
+    }
   }
 
   // Fleet
@@ -471,18 +591,31 @@ export async function runMorningScan({ projectDir, reasoningModel, anthropicApiK
 
     // No LLM available — return raw context for manual review
     if (!result) {
+      // Pick items from both development and research boards
+      const devProposals = context.kanban.backlog.slice(0, 2).map((item) => ({
+        exp: item.id,
+        title: item.title,
+        priority: item.priority,
+        agent: machineName,
+        reasoning: "Auto-picked from development backlog (no LLM)",
+      }));
+
+      // Include active research items (experiments needing analysis or execution)
+      const researchProposals = (context.research?.active || []).slice(0, 1).map((item) => ({
+        exp: item.id,
+        title: item.title,
+        priority: item.priority || "medium",
+        phase: item.phase,
+        agent: item.phase === "analysis" ? "DGX" : (item.phase === "execution" ? "M5" : machineName),
+        reasoning: `Research item in ${item.phase || "active"} phase (no LLM)`,
+      }));
+
       result = {
-        proposals: context.kanban.backlog.slice(0, 3).map((item) => ({
-          exp: item.id,
-          title: item.title,
-          priority: item.priority,
-          agent: machineName,
-          reasoning: "Auto-picked from backlog (no LLM available for reasoning)",
-        })),
+        proposals: [...devProposals, ...researchProposals],
         staleExpeditions: [],
         needsReview: [],
-        reasoning: "No LLM available — returning top backlog items without reasoning",
-        fleetSummary: `${context.kanban.inProgress.length} in-progress, ${context.kanban.backlog.length} in backlog`,
+        reasoning: "No LLM available — returning top items from both boards",
+        fleetSummary: `Dev: ${context.kanban.inProgress.length} in-progress, ${context.kanban.backlog.length} backlog. Research: ${context.research?.active?.length || 0} active, ${context.research?.draft?.length || 0} draft`,
         llmSource: "none",
       };
     }
