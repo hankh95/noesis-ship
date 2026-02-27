@@ -134,8 +134,8 @@ export async function createChore(title, options = {}) {
 
   try {
     const { stdout, stderr } = await execFile(
-      "bash",
-      ["-c", `yurtle-kanban create chore "${title.replace(/"/g, '\\"')}" --push`],
+      "yurtle-kanban",
+      ["create", "chore", title, "--push"],
       {
         timeout: 30_000,
         cwd: config.projectDir,

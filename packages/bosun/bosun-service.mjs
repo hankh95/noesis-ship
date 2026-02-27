@@ -253,6 +253,10 @@ function handleFleetAlert(msg) {
       break;
     }
 
+    case "stale_item":
+      log(`Stale item: ${exp || "unknown"} (${msg.action || "?"}) — ${msg.reasoning || ""}`);
+      break;
+
     default:
       log(`Fleet alert: ${alertType} — ${msg.message || ""}`);
   }
