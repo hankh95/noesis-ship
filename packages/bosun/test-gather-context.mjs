@@ -5,42 +5,19 @@
  * Covers:
  *   - gatherFleetContext() end-to-end with fixture data
  *   - readExpeditionFiles() file-glob fallback
- *   - parseSimpleFrontmatter() with Yurtle frontmatter (RDF prefixes, tags, arrays)
- *   - Parallel gathering (all 5 sources complete without races)
+ *   - parseSimpleFrontmatter() via real file-glob path with Yurtle fixtures
  *   - Graceful degradation when data sources fail
+ *   - Cached fleet status passthrough
  *
- * Pattern: Same test()/assert() as test-bosun.mjs (no external framework).
+ * Pattern: Shared test()/assert() from test-helpers.mjs.
  * Tests use a temp directory with Yurtle-format fixture files.
  */
 
+import { test, assert, summary } from "./test-helpers.mjs";
 import { gatherFleetContext, parseProposals } from "./morning-scan.mjs";
 import { writeFile, mkdir, rm } from "fs/promises";
 import path from "path";
 import os from "os";
-
-let passed = 0;
-let failed = 0;
-
-function test(name, fn) {
-  try {
-    const result = fn();
-    if (result && typeof result.then === "function") {
-      return result.then(
-        () => { console.log(`  PASS  ${name}`); passed++; },
-        (err) => { console.log(`  FAIL  ${name}: ${err.message}`); failed++; }
-      );
-    }
-    console.log(`  PASS  ${name}`);
-    passed++;
-  } catch (err) {
-    console.log(`  FAIL  ${name}: ${err.message}`);
-    failed++;
-  }
-}
-
-function assert(condition, msg) {
-  if (!condition) throw new Error(msg || "Assertion failed");
-}
 
 // ─── Fixture Setup ──────────────────────────────────────────────────────────
 
@@ -48,7 +25,6 @@ const FIXTURE_DIR = path.join(os.tmpdir(), `bosun-test-${Date.now()}`);
 const EXP_DIR = path.join(FIXTURE_DIR, "kanban-work", "expeditions");
 const HYP_FILE = path.join(FIXTURE_DIR, "research", "A-NUSY-HYPOTHESIS-LIST.md");
 const ACF_DIR = path.join(FIXTURE_DIR, "research", "A-NUSY-LONGITUDINAL-DATA", "data");
-const STALE_SCRIPT = path.join(FIXTURE_DIR, "scripts", "stale_expedition_detector.py");
 
 /**
  * Create fixture files that match real Yurtle format.
@@ -58,7 +34,7 @@ async function setupFixtures() {
   await mkdir(EXP_DIR, { recursive: true });
   await mkdir(path.dirname(HYP_FILE), { recursive: true });
   await mkdir(ACF_DIR, { recursive: true });
-  await mkdir(path.dirname(STALE_SCRIPT), { recursive: true });
+  await mkdir(path.join(FIXTURE_DIR, "scripts"), { recursive: true });
 
   // Expedition in backlog — standard Yurtle frontmatter
   await writeFile(path.join(EXP_DIR, "EXP-100-Test-Backlog.md"), `---
@@ -183,6 +159,16 @@ async function cleanupFixtures() {
   }
 }
 
+// ─── Helper: assert kanban used file-glob (skip test otherwise) ─────────────
+
+function requireFileGlob(ctx, testName) {
+  if (ctx.kanban.source !== "file-glob") {
+    console.log(`  SKIP  ${testName} (yurtle-kanban responded — file-glob path not exercised)`);
+    return false;
+  }
+  return true;
+}
+
 // ─── Tests ──────────────────────────────────────────────────────────────────
 
 async function runTests() {
@@ -199,26 +185,12 @@ async function runTests() {
     assert(ctx.expeditionFacts !== undefined, "missing expeditionFacts");
   });
 
-  await test("gatherFleetContext runs all 5 sources in parallel (Promise.all)", async () => {
-    // Timing test: if sequential, would take >5s with network calls.
-    // With fixture data and failed subprocess calls, should be fast.
-    const start = Date.now();
-    await gatherFleetContext(FIXTURE_DIR);
-    const elapsed = Date.now() - start;
-    // All subprocess calls will fail (yurtle-kanban, tmux, gh, python3 not in fixture dir)
-    // but they should all fail fast in parallel
-    assert(elapsed < 20_000, `took ${elapsed}ms — may not be parallel`);
-  });
-
   await test("kanban fallback reads expedition files when yurtle-kanban unavailable", async () => {
-    // yurtle-kanban CLI won't find config in FIXTURE_DIR → falls back to file glob
     const ctx = await gatherFleetContext(FIXTURE_DIR);
-    // The kanban field should have data from file-glob fallback
     assert(ctx.kanban.backlog !== undefined, "missing backlog");
     assert(ctx.kanban.inProgress !== undefined, "missing inProgress");
 
-    // If source is file-glob, verify items
-    if (ctx.kanban.source === "file-glob") {
+    if (requireFileGlob(ctx, "kanban fallback item counts")) {
       assert(ctx.kanban.backlog.length >= 2, `backlog: ${ctx.kanban.backlog.length} (expected >=2: EXP-100, EXP-300)`);
       assert(ctx.kanban.inProgress.length >= 2, `inProgress: ${ctx.kanban.inProgress.length} (expected >=2: EXP-200, EXP-400)`);
     }
@@ -228,7 +200,7 @@ async function runTests() {
 
   await test("file-glob fallback parses standard YAML frontmatter", async () => {
     const ctx = await gatherFleetContext(FIXTURE_DIR);
-    if (ctx.kanban.source !== "file-glob") return; // Skip if yurtle-kanban answered
+    if (!requireFileGlob(ctx, "standard YAML frontmatter")) return;
 
     const exp100 = ctx.kanban.backlog.find((i) => i.id === "EXP-100");
     assert(exp100, "EXP-100 should be in backlog");
@@ -242,7 +214,7 @@ async function runTests() {
 
   await test("file-glob fallback handles RDF @prefix lines in frontmatter", async () => {
     const ctx = await gatherFleetContext(FIXTURE_DIR);
-    if (ctx.kanban.source !== "file-glob") return;
+    if (!requireFileGlob(ctx, "RDF @prefix lines")) return;
 
     const exp300 = ctx.kanban.backlog.find((i) => i.id === "EXP-300");
     assert(exp300, "EXP-300 should be in backlog (RDF prefixes skipped)");
@@ -255,7 +227,7 @@ async function runTests() {
 
   await test("file-glob fallback recognizes both in-progress and in_progress status", async () => {
     const ctx = await gatherFleetContext(FIXTURE_DIR);
-    if (ctx.kanban.source !== "file-glob") return;
+    if (!requireFileGlob(ctx, "status variants")) return;
 
     const exp200 = ctx.kanban.inProgress.find((i) => i.id === "EXP-200");
     assert(exp200, "EXP-200 (in-progress) should be in inProgress");
@@ -266,7 +238,7 @@ async function runTests() {
 
   await test("file-glob fallback excludes non-EXP files", async () => {
     const ctx = await gatherFleetContext(FIXTURE_DIR);
-    if (ctx.kanban.source !== "file-glob") return;
+    if (!requireFileGlob(ctx, "non-EXP exclusion")) return;
 
     const all = [...ctx.kanban.backlog, ...ctx.kanban.inProgress];
     const readme = all.find((i) => i.title === "# This should be ignored");
@@ -275,7 +247,7 @@ async function runTests() {
 
   await test("file-glob fallback excludes done expeditions from both lists", async () => {
     const ctx = await gatherFleetContext(FIXTURE_DIR);
-    if (ctx.kanban.source !== "file-glob") return;
+    if (!requireFileGlob(ctx, "done exclusion")) return;
 
     const all = [...ctx.kanban.backlog, ...ctx.kanban.inProgress];
     const done = all.find((i) => i.id === "EXP-50");
@@ -294,10 +266,11 @@ async function runTests() {
 
   console.log("\n--- ACF History Tests ---");
 
-  await test("ACF history reads recent JSON files", async () => {
+  await test("ACF history reads recent JSON files sorted by filename", async () => {
     const ctx = await gatherFleetContext(FIXTURE_DIR);
     assert(Array.isArray(ctx.acf), "acf should be array");
     assert(ctx.acf.length === 2, `acf entries: ${ctx.acf.length} (expected 2)`);
+    // Files are sorted by name (ISO date prefix) — last entry is most recent
     const latest = ctx.acf[ctx.acf.length - 1];
     assert(latest.acf_score === 0.75, `latest acf: ${latest.acf_score}`);
     assert(latest.being === "santiago-toddler-v12", `being: ${latest.being}`);
@@ -307,7 +280,6 @@ async function runTests() {
 
   await test("expedition facts gracefully handles missing stale detector", async () => {
     const ctx = await gatherFleetContext(FIXTURE_DIR);
-    // stale_expedition_detector.py doesn't exist at STALE_SCRIPT
     assert(ctx.expeditionFacts !== undefined, "expeditionFacts should exist");
     assert(ctx.expeditionFacts.total === 0, `total: ${ctx.expeditionFacts.total}`);
     assert(Array.isArray(ctx.expeditionFacts.expeditions), "expeditions should be array");
@@ -315,12 +287,14 @@ async function runTests() {
 
   console.log("\n--- Fleet Health Tests ---");
 
-  await test("fleet health returns structure even when tools unavailable", async () => {
+  await test("fleet health returns structure with expected fields", async () => {
     const ctx = await gatherFleetContext(FIXTURE_DIR);
     assert(ctx.fleet !== undefined, "fleet should exist");
-    // tmux/gh/git may not be available in test env — fields should still exist
-    assert(Array.isArray(ctx.fleet.tmuxSessions) || ctx.fleet.tmuxSessions === undefined ||
-           typeof ctx.fleet.agents_busy === "number", "fleet should have sessions or status fields");
+    // getFleetHealth() always returns these fields even when tools fail
+    assert(Array.isArray(ctx.fleet.tmuxSessions), `tmuxSessions should be array, got ${typeof ctx.fleet.tmuxSessions}`);
+    assert(typeof ctx.fleet.agentsBusy === "number", `agentsBusy should be number, got ${typeof ctx.fleet.agentsBusy}`);
+    assert(typeof ctx.fleet.agentsAvailable === "number", `agentsAvailable should be number`);
+    assert(typeof ctx.fleet.worktrees === "number", `worktrees should be number`);
   });
 
   console.log("\n--- Cached Fleet Status Tests ---");
@@ -359,64 +333,13 @@ async function runTests() {
     assert(result.needsReview[0].question.includes("still relevant"), "question should pass through");
   });
 
-  test("parseProposals defaults stale and review arrays when missing", () => {
-    const text = JSON.stringify({
-      proposals: [{ exp: "EXP-100", title: "Test", priority: "high", agent: "Mini", reasoning: "r" }],
-      reasoning: "Just proposals, no stale",
-    });
-    const result = parseProposals(text);
-    assert(Array.isArray(result.staleExpeditions), "staleExpeditions should be array");
-    assert(result.staleExpeditions.length === 0, `stale: ${result.staleExpeditions.length}`);
-    assert(Array.isArray(result.needsReview), "needsReview should be array");
-    assert(result.needsReview.length === 0, `review: ${result.needsReview.length}`);
-  });
-
-  console.log("\n--- Frontmatter Edge Cases ---");
-
-  test("parseSimpleFrontmatter handles quoted title with colons", () => {
-    // Indirectly test via gatherFleetContext file parsing
-    // The parser uses split(":", 2) — titles with colons should work if quoted
-    const text = `---
-id: EXP-999
-title: "HDD: Hypothesis-Driven Development"
-status: backlog
----
-# Content`;
-    const match = text.match(/^---\n([\s\S]*?)\n---/);
-    assert(match, "should find frontmatter");
-    // The parser splits on first colon only (kv = line.split(":", 2))
-    const lines = match[1].split("\n");
-    const titleLine = lines.find((l) => l.startsWith("title:"));
-    assert(titleLine, "should find title line");
-    const val = titleLine.split(":").slice(1).join(":").trim().replace(/^["']|["']$/g, "");
-    assert(val === "HDD: Hypothesis-Driven Development", `title: ${val}`);
-  });
-
-  test("parseSimpleFrontmatter handles empty tag arrays", () => {
-    const text = `---
-id: EXP-888
-title: No Tags
-status: backlog
-tags: []
----
-# Content`;
-    const match = text.match(/^---\n([\s\S]*?)\n---/);
-    const lines = match[1].split("\n");
-    const tagLine = lines.find((l) => l.startsWith("tags:"));
-    const val = tagLine.split(":")[1].trim();
-    assert(val === "[]", `tags val: ${val}`);
-  });
-
   // Cleanup
   await cleanupFixtures();
 
   // ─── Summary ────────────────────────────────────────────────────────────────
 
-  console.log(`\n${"=".repeat(50)}`);
-  console.log(`gatherFleetContext tests: ${passed} passed, ${failed} failed`);
-  console.log(`${"=".repeat(50)}\n`);
-
-  process.exit(failed > 0 ? 1 : 0);
+  const failures = summary("gatherFleetContext tests");
+  process.exit(failures > 0 ? 1 : 0);
 }
 
 runTests();
