@@ -1,0 +1,12 @@
+{
+  "name": "@noesis-ship/fleet-alert",
+  "version": "0.1.0",
+  "description": "Fleet alert publisher — publishes PR, CI, and agent events to ship.fleet.alert",
+  "scripts": {
+    "test-publish": "node test-publish.js"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "@noesis-ship/shared": "file:../shared"
+  }
+}

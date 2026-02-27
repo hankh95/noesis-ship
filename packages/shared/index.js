@@ -7,11 +7,14 @@ const { connectNATS, publishJSON, decodeJSON, sc } = require("./nats-helpers");
 const {
   buildMessage,
   buildKanbanEvent,
+  buildFleetAlert,
   isFromSelf,
   isFromHuman,
   isDirectedTo,
   isFromAgent,
   channelSubject,
+  fleetAlertSubject,
+  FLEET_ALERT_SUBJECT,
 } = require("./wire-protocol");
 
 module.exports = {
@@ -25,9 +28,12 @@ module.exports = {
   // Wire protocol
   buildMessage,
   buildKanbanEvent,
+  buildFleetAlert,
   isFromSelf,
   isFromHuman,
   isDirectedTo,
   isFromAgent,
   channelSubject,
+  fleetAlertSubject,
+  FLEET_ALERT_SUBJECT,
 };

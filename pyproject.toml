@@ -31,6 +31,8 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
+    "pytest-bdd>=8.0",
+    "websockets>=13.0",
 ]
 
 [tool.hatch.build.targets.wheel]
@@ -39,3 +41,6 @@ packages = ["noesis_ship"]
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+markers = [
+    "integration: end-to-end tests requiring NATS server and relay (deselect with '-m not integration')",
+]
