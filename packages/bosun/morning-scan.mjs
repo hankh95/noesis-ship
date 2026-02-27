@@ -25,6 +25,7 @@ You receive:
 - Fleet health (which agents are busy/available, active tmux sessions)
 - ACF history (recent being performance scores — ACF is the reward signal)
 - Active hypotheses (research questions being tested)
+- Stale expeditions (backlog items that reference missing files, deprecated imports, or outdated architecture)
 
 Rules:
 - Maximum 3 proposals per scan
@@ -37,6 +38,9 @@ Rules:
 - Never propose work that duplicates in-progress expeditions
 - If ACF scores dropped recently, prioritize investigations/fixes
 - If all agents are busy and at WIP limit, propose nothing
+- For stale expeditions:
+  - High-confidence stale items should be flagged for update/closure
+  - Low-confidence items ("needs Captain review") should be surfaced as questions, not assumed stale
 
 Output format (JSON):
 {
@@ -210,14 +214,39 @@ async function getHypotheses(projectDir) {
 }
 
 /**
+ * Get stale expedition analysis from the Python detector.
+ * Returns expeditions with staleness indicators + needs_review items for Captain.
+ */
+async function getStaleExpeditions(projectDir) {
+  try {
+    const result = await runCmd(
+      "python3",
+      [path.join(projectDir, "scripts", "stale_expedition_detector.py"), "--json", "--stale-only"],
+      { cwd: projectDir, timeout: 30_000, fallback: "{}" }
+    );
+
+    const data = tryParseJSON(result, { expeditions: [], needs_review: [] });
+    return {
+      stale_count: data.stale_count || 0,
+      needs_review_count: data.needs_review_count || 0,
+      expeditions: (data.expeditions || []).slice(0, 10), // Top 10 stale
+      needs_review: (data.needs_review || []).slice(0, 5), // Top 5 for Captain
+    };
+  } catch {
+    return { stale_count: 0, needs_review_count: 0, expeditions: [], needs_review: [] };
+  }
+}
+
+/**
  * Gather all fleet context in parallel.
  */
 export async function gatherFleetContext(projectDir, cachedFleetStatus) {
-  const [kanban, fleet, acf, hypotheses] = await Promise.all([
+  const [kanban, fleet, acf, hypotheses, stale] = await Promise.all([
     getKanbanState(projectDir),
     getFleetHealth(),
     getAcfHistory(projectDir),
     getHypotheses(projectDir),
+    getStaleExpeditions(projectDir),
   ]);
 
   return {
@@ -225,6 +254,7 @@ export async function gatherFleetContext(projectDir, cachedFleetStatus) {
     fleet: cachedFleetStatus || fleet,
     acf,
     hypotheses,
+    stale,
   };
 }
 
@@ -273,6 +303,26 @@ function formatContext(context) {
     sections.push("\n## Active Hypotheses");
     for (const h of context.hypotheses) {
       sections.push(`  ${h}`);
+    }
+  }
+
+  // Stale expeditions
+  if (context.stale && context.stale.stale_count > 0) {
+    sections.push("\n## Stale Expeditions (need attention)");
+    sections.push(`Total stale: ${context.stale.stale_count}, needs Captain review: ${context.stale.needs_review_count}`);
+    for (const exp of context.stale.expeditions.slice(0, 5)) {
+      const indicators = (exp.confident_indicators || [])
+        .map((i) => i.message)
+        .slice(0, 2)
+        .join("; ");
+      sections.push(`  - ${exp.exp_id}: ${exp.title} [score=${exp.stale_score.toFixed(2)}] ${indicators}`);
+    }
+    // Items needing Captain review
+    if (context.stale.needs_review && context.stale.needs_review.length > 0) {
+      sections.push("\n⚠️ Items for Captain to review (low confidence detections):");
+      for (const item of context.stale.needs_review.slice(0, 3)) {
+        sections.push(`  - ${item.exp_id}: ${item.question}`);
+      }
     }
   }
 
@@ -368,6 +418,7 @@ export async function runMorningScan({ projectDir, reasoningModel, anthropicApiK
       agents_available: context.fleet.agentsAvailable || 0,
       wip_count: context.kanban.inProgress.length,
     },
+    stale: context.stale || { stale_count: 0, needs_review_count: 0 },
   };
 }
 
