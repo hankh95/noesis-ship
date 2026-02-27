@@ -9,6 +9,7 @@
  *   ship.channel.bosun  ← Captain commands (approve, reject, scan, status)
  *   ship.fleet.status   ← Fleet health updates (cached)
  *   ship.fleet.alert    ← PR/CI/agent events
+ *   ship.kanban.>       ← Kanban hook events (item created, status change, etc.)
  *   ship.fleet.proposal → Morning proposals (published)
  *   ship.fleet.alert    → Completion/ACF alerts (published)
  *
@@ -249,6 +250,33 @@ function handleFleetStatus(msg) {
   log(`Fleet status updated: ${msg.agents_busy || 0} busy, ${msg.agents_available || 0} available`);
 }
 
+function handleKanbanEvent(subject, data) {
+  const { event, item_id, item_type, title, assignee } = data;
+
+  switch (subject) {
+    case "ship.kanban.idea.created":
+      log(`Kanban: New idea ${item_id} — "${title || "?"}" (architect evaluation pending)`);
+      break;
+    case "ship.kanban.expedition.started":
+      log(`Kanban: Expedition started ${item_id} by ${assignee || "unassigned"}`);
+      break;
+    case "ship.kanban.item.completed":
+      log(`Kanban: Completed ${item_id} (${item_type || "?"})`);
+      break;
+    case "ship.kanban.expedition.stale":
+      log(`Kanban: Stale expedition ${item_id} — "${title || "?"}"`);
+      break;
+    case "ship.kanban.expedition.assigned":
+      log(`Kanban: ${item_id} assigned to ${assignee || "?"}`);
+      break;
+    case "ship.kanban.item.blocked":
+      log(`Kanban: ${item_id} BLOCKED — "${title || "?"}"`);
+      break;
+    default:
+      log(`Kanban: [${subject}] ${item_id || "?"} ${event || ""}`);
+  }
+}
+
 // ─── NATS Subscription Router ───────────────────────────────────────────────
 
 async function subscribeAll(nc, sc) {
@@ -298,6 +326,21 @@ async function subscribeAll(nc, sc) {
         handleFleetStatus(data);
       } catch (err) {
         log(`Status error: ${err.message}`);
+      }
+    }
+  })();
+
+  // 4. Kanban events (published by yurtle-kanban hook engine)
+  const kanbanSub = nc.subscribe("ship.kanban.>");
+  log("Subscribed to ship.kanban.>");
+
+  (async () => {
+    for await (const msg of kanbanSub) {
+      try {
+        const data = decodeJSON(msg);
+        handleKanbanEvent(msg.subject, data);
+      } catch (err) {
+        log(`Kanban event error: ${err.message}`);
       }
     }
   })();
