@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "noesis-ship"
-version = "0.1.0"
+version = "0.2.0"
 description = "Pluggable multi-agent communication platform — NATS core with WebSocket, MCP, and HTTP/SSE adapters"
 readme = "README.md"
 license = "ISC"
