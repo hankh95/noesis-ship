@@ -136,29 +136,14 @@ async function getKanbanState(projectDir) {
 
 /**
  * Get research board state: HDD items (hypotheses, experiments, papers, etc.)
- * Uses yurtle-kanban CLI with --board research flag.
+ *
+ * NOTE: yurtle-kanban `list` command does not yet support --board flag.
+ * Until that's added, we read research files directly from the filesystem.
+ * This is reliable since research items are markdown files with frontmatter.
  */
 async function getResearchBoardState(projectDir) {
-  // Query research board — HDD items have states: draft, active, complete, abandoned
-  const draft = await runCmd("yurtle-kanban", ["list", "--board", "research", "--status", "draft", "--json"], { cwd: projectDir });
-  const active = await runCmd("yurtle-kanban", ["list", "--board", "research", "--status", "active", "--json"], { cwd: projectDir });
-  const complete = await runCmd("yurtle-kanban", ["list", "--board", "research", "--status", "complete", "--json"], { cwd: projectDir });
-
-  const draftItems = tryParseJSON(draft, []);
-  const activeItems = tryParseJSON(active, []);
-  const completeItems = tryParseJSON(complete, []);
-
-  // If we got any data, return it
-  if (draftItems.length > 0 || activeItems.length > 0 || completeItems.length > 0) {
-    return {
-      draft: draftItems,
-      active: activeItems,
-      complete: completeItems,
-      source: "yurtle-kanban",
-    };
-  }
-
-  // Fallback: read research files directly
+  // Read research files directly (6 directories)
+  // Future: When yurtle-kanban adds `list --board research`, we can switch to CLI
   return await readResearchFiles(projectDir);
 }
 
