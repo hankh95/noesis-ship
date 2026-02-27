@@ -25,6 +25,7 @@ function collectTmuxSessions() {
     execFile(
       "tmux",
       ["list-sessions", "-F", "#{session_name}|#{session_activity}|#{session_attached}"],
+      { timeout: 5_000 },
       (err, stdout) => {
         if (err) {
           // tmux not running or no sessions — not an error

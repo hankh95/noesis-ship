@@ -70,8 +70,6 @@ function detectAlerts(sessions, prs) {
     // ── Agent alerts ──────────────────────────────────────────────────
 
     for (const session of sessions) {
-      const prev = previousSessions.get(session.name);
-
       // Agent stuck: idle longer than threshold
       if (session.idleMinutes >= IDLE_THRESHOLD_MIN) {
         const key = `agent_stuck:${session.name}`;
@@ -247,7 +245,7 @@ async function start() {
   const shutdown = async () => {
     log("Shutting down...");
     clearInterval(timer);
-    await nc.drain();
+    try { await nc.drain(); } catch { /* drain may fail if already closed */ }
     process.exit(0);
   };
 
