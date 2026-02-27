@@ -11,25 +11,28 @@
     "packages/mcp-server",
     "packages/chat",
     "packages/fleet-status",
-    "packages/bosun"
+    "packages/bosun",
+    "packages/fleet-monitor"
   ],
   "scripts": {
     "start": "npm start --workspace=@noesis-ship/relay",
     "daemon": "npm start --workspace=@noesis-ship/daemon",
     "daemon:v2": "node packages/daemon/agent-daemon-v2.mjs",
     "fleet-log": "npm start --workspace=@noesis-ship/fleet-log",
+    "fleet-monitor": "npm start --workspace=@noesis-ship/fleet-monitor",
     "mcp": "npm start --workspace=@noesis-ship/mcp-server",
     "chat": "npm start --workspace=@noesis-ship/chat",
     "fleet-status": "npm start --workspace=@noesis-ship/fleet-status",
-    "test": "npm test --workspace=@noesis-ship/shared && npm test --workspace=@noesis-ship/daemon",
+    "bosun": "node packages/bosun/bosun-service.mjs",
+    "bosun:scan": "node packages/bosun/bosun-service.mjs --scan-once",
+    "test": "npm test --workspace=@noesis-ship/shared && npm test --workspace=@noesis-ship/daemon && npm test --workspace=@noesis-ship/fleet-monitor",
     "test:shared": "npm test --workspace=@noesis-ship/shared",
     "test:daemon": "npm test --workspace=@noesis-ship/daemon",
     "test:relay": "npm test --workspace=@noesis-ship/relay",
     "test:chat": "npm test --workspace=@noesis-ship/chat",
     "test:fleet-status": "npm test --workspace=@noesis-ship/fleet-status",
-    "bosun": "node packages/bosun/bosun-service.mjs",
-    "bosun:scan": "node packages/bosun/bosun-service.mjs --scan-once",
-    "test:bosun": "npm test --workspace=@noesis-ship/bosun"
+    "test:bosun": "npm test --workspace=@noesis-ship/bosun",
+    "test:fleet-monitor": "npm test --workspace=@noesis-ship/fleet-monitor"
   },
   "author": "Congruent Systems PBC",
   "license": "ISC"

@@ -8,6 +8,7 @@ const {
   buildMessage,
   buildKanbanEvent,
   buildFleetAlert,
+  buildFleetStatus,
   isFromSelf,
   isFromHuman,
   isDirectedTo,
@@ -15,6 +16,7 @@ const {
   channelSubject,
   fleetAlertSubject,
   FLEET_ALERT_SUBJECT,
+  FLEET_STATUS_SUBJECT,
 } = require("./index");
 
 let passed = 0;
@@ -157,6 +159,36 @@ test("FLEET_ALERT_SUBJECT is correct", () => {
 
 test("fleetAlertSubject returns correct subject", () => {
   assert(fleetAlertSubject() === "ship.fleet.alert", `subject: ${fleetAlertSubject()}`);
+});
+
+// ─── Fleet Status Tests ───────────────────────────────────────────────────
+
+console.log("\n--- Fleet Status Tests ---");
+
+test("buildFleetStatus creates valid payload", () => {
+  const agents = [
+    { name: "Mini", idleMinutes: 5, attached: true },
+    { name: "DGX", idleMinutes: 22, attached: true },
+  ];
+  const prs = [
+    { number: 14, title: "Fleet monitor", ciStatus: "SUCCESS", reviewStatus: "APPROVED" },
+  ];
+  const status = buildFleetStatus(agents, prs);
+  assert(status.type === "fleet_status", `type: ${status.type}`);
+  assert(status.agents.length === 2, `agents count: ${status.agents.length}`);
+  assert(status.prs.length === 1, `prs count: ${status.prs.length}`);
+  assert(status.timestamp, "missing timestamp");
+});
+
+test("buildFleetStatus with empty arrays", () => {
+  const status = buildFleetStatus([], []);
+  assert(status.type === "fleet_status", `type: ${status.type}`);
+  assert(status.agents.length === 0, `agents: ${status.agents.length}`);
+  assert(status.prs.length === 0, `prs: ${status.prs.length}`);
+});
+
+test("FLEET_STATUS_SUBJECT is correct", () => {
+  assert(FLEET_STATUS_SUBJECT === "ship.fleet.status", `subject: ${FLEET_STATUS_SUBJECT}`);
 });
 
 // ─── Summary ────────────────────────────────────────────────────────────────
