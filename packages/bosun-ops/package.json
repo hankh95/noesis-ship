@@ -1,0 +1,13 @@
+{
+  "name": "@noesis-ship/bosun-ops",
+  "version": "0.1.0",
+  "description": "Bosun operations logger — NATS event stream to daily JSON logs",
+  "main": "ops-logger.js",
+  "scripts": {
+    "start": "node ops-logger.js"
+  },
+  "dependencies": {
+    "@noesis-ship/shared": "0.1.0",
+    "dotenv": "^16.4.7"
+  }
+}
