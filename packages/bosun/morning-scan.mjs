@@ -25,7 +25,7 @@ You receive:
 - Fleet health (which agents are busy/available, active tmux sessions)
 - ACF history (recent being performance scores — ACF is the reward signal)
 - Active hypotheses (research questions being tested)
-- Stale expeditions (backlog items that reference missing files, deprecated imports, or outdated architecture)
+- Expedition facts (file references, ages, missing files — YOU decide staleness)
 
 Rules:
 - Maximum 3 proposals per scan
@@ -38,9 +38,13 @@ Rules:
 - Never propose work that duplicates in-progress expeditions
 - If ACF scores dropped recently, prioritize investigations/fixes
 - If all agents are busy and at WIP limit, propose nothing
-- For stale expeditions:
-  - High-confidence stale items should be flagged for update/closure
-  - Low-confidence items ("needs Captain review") should be surfaced as questions, not assumed stale
+
+Staleness analysis (from expedition facts):
+- Missing files ALONE don't mean stale — files may have been renamed or the expedition is about creating them
+- Old age (>60 days backlog) + missing files = likely stale
+- In-progress >30 days with no recent PR = may be blocked
+- When CONFIDENT an expedition is stale, add to stale_expeditions with action
+- When UNCERTAIN (needs context only Captain has), add to needs_review with a QUESTION
 
 Output format (JSON):
 {
@@ -53,6 +57,19 @@ Output format (JSON):
       "phase": null,
       "model": "claude-opus-4-6",
       "reasoning": "1-2 sentences why this is high priority"
+    }
+  ],
+  "stale_expeditions": [
+    {
+      "exp": "EXP-XXX",
+      "action": "close|update|archive",
+      "reasoning": "Why this is stale (missing files X, Y, Z that no longer exist)"
+    }
+  ],
+  "needs_review": [
+    {
+      "exp": "EXP-XXX",
+      "question": "Is this expedition still relevant? It references foo.py which was deleted, but may be intentional."
     }
   ],
   "fleet_summary": "1-2 sentence fleet state summary",
@@ -214,26 +231,27 @@ async function getHypotheses(projectDir) {
 }
 
 /**
- * Get stale expedition analysis from the Python detector.
- * Returns expeditions with staleness indicators + needs_review items for Captain.
+ * Get expedition facts from the Python detector for LLM reasoning.
+ * The detector extracts FACTS only — the LLM decides what's stale.
  */
-async function getStaleExpeditions(projectDir) {
+async function getExpeditionFacts(projectDir) {
   try {
     const result = await runCmd(
       "python3",
-      [path.join(projectDir, "scripts", "stale_expedition_detector.py"), "--json", "--stale-only"],
+      [path.join(projectDir, "scripts", "stale_expedition_detector.py"), "--json"],
       { cwd: projectDir, timeout: 30_000, fallback: "{}" }
     );
 
-    const data = tryParseJSON(result, { expeditions: [], needs_review: [] });
+    const data = tryParseJSON(result, { expeditions: [], summary: {} });
     return {
-      stale_count: data.stale_count || 0,
-      needs_review_count: data.needs_review_count || 0,
-      expeditions: (data.expeditions || []).slice(0, 10), // Top 10 stale
-      needs_review: (data.needs_review || []).slice(0, 5), // Top 5 for Captain
+      total: data.total_expeditions || 0,
+      missing_files_total: data.summary?.total_missing_files || 0,
+      old_backlog_count: data.summary?.old_backlog_count || 0,
+      stale_in_progress: data.summary?.stale_in_progress || 0,
+      expeditions: (data.expeditions || []).slice(0, 15), // Top 15 for LLM context
     };
   } catch {
-    return { stale_count: 0, needs_review_count: 0, expeditions: [], needs_review: [] };
+    return { total: 0, missing_files_total: 0, old_backlog_count: 0, stale_in_progress: 0, expeditions: [] };
   }
 }
 
@@ -241,12 +259,12 @@ async function getStaleExpeditions(projectDir) {
  * Gather all fleet context in parallel.
  */
 export async function gatherFleetContext(projectDir, cachedFleetStatus) {
-  const [kanban, fleet, acf, hypotheses, stale] = await Promise.all([
+  const [kanban, fleet, acf, hypotheses, expeditionFacts] = await Promise.all([
     getKanbanState(projectDir),
     getFleetHealth(),
     getAcfHistory(projectDir),
     getHypotheses(projectDir),
-    getStaleExpeditions(projectDir),
+    getExpeditionFacts(projectDir),
   ]);
 
   return {
@@ -254,7 +272,7 @@ export async function gatherFleetContext(projectDir, cachedFleetStatus) {
     fleet: cachedFleetStatus || fleet,
     acf,
     hypotheses,
-    stale,
+    expeditionFacts,
   };
 }
 
@@ -306,24 +324,28 @@ function formatContext(context) {
     }
   }
 
-  // Stale expeditions
-  if (context.stale && context.stale.stale_count > 0) {
-    sections.push("\n## Stale Expeditions (need attention)");
-    sections.push(`Total stale: ${context.stale.stale_count}, needs Captain review: ${context.stale.needs_review_count}`);
-    for (const exp of context.stale.expeditions.slice(0, 5)) {
-      const indicators = (exp.confident_indicators || [])
-        .map((i) => i.message)
-        .slice(0, 2)
-        .join("; ");
-      sections.push(`  - ${exp.exp_id}: ${exp.title} [score=${exp.stale_score.toFixed(2)}] ${indicators}`);
-    }
-    // Items needing Captain review
-    if (context.stale.needs_review && context.stale.needs_review.length > 0) {
-      sections.push("\n⚠️ Items for Captain to review (low confidence detections):");
-      for (const item of context.stale.needs_review.slice(0, 3)) {
-        sections.push(`  - ${item.exp_id}: ${item.question}`);
+  // Expedition facts for LLM reasoning about staleness
+  if (context.expeditionFacts && context.expeditionFacts.expeditions.length > 0) {
+    sections.push("\n## Expedition Facts (for staleness analysis)");
+    sections.push(`Summary: ${context.expeditionFacts.total} expeditions, ${context.expeditionFacts.missing_files_total} missing file refs, ${context.expeditionFacts.old_backlog_count} backlog >60 days, ${context.expeditionFacts.stale_in_progress} in-progress >30 days`);
+    sections.push("\nExpeditions with potential issues:");
+    for (const exp of context.expeditionFacts.expeditions) {
+      // Only show expeditions with issues (missing files, old, etc.)
+      if (exp.missing_file_count > 0 || exp.age_days > 30) {
+        sections.push(`  - ${exp.exp_id}: ${exp.title}`);
+        sections.push(`    Status: ${exp.status} | Age: ${exp.age_days} days | Priority: ${exp.priority}`);
+        if (exp.missing_file_count > 0) {
+          sections.push(`    Missing files (${exp.missing_file_count}):`);
+          for (const mf of (exp.missing_files || []).slice(0, 3)) {
+            sections.push(`      • ${mf.path}`);
+          }
+        }
+        if (!exp.has_acceptance_criteria) {
+          sections.push(`    ⚠️ No acceptance criteria found`);
+        }
       }
     }
+    sections.push("\n→ Based on these facts, identify which expeditions are LIKELY stale and which need Captain review (unclear/context-dependent).");
   }
 
   return sections.join("\n");
@@ -354,31 +376,29 @@ async function generateProposals(context, { reasoningModel, anthropicApiKey }) {
  * Handles both JSON and markdown-wrapped JSON.
  */
 export function parseProposals(text) {
+  const extractFields = (parsed) => ({
+    proposals: parsed.proposals || [],
+    staleExpeditions: parsed.stale_expeditions || [],
+    needsReview: parsed.needs_review || [],
+    reasoning: parsed.reasoning || "",
+    fleetSummary: parsed.fleet_summary || "",
+  });
+
   // Try direct JSON parse
   try {
-    const parsed = JSON.parse(text);
-    return {
-      proposals: parsed.proposals || [],
-      reasoning: parsed.reasoning || "",
-      fleetSummary: parsed.fleet_summary || "",
-    };
+    return extractFields(JSON.parse(text));
   } catch {
     // Try extracting JSON from markdown code block
     const jsonMatch = text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
     if (jsonMatch) {
       try {
-        const parsed = JSON.parse(jsonMatch[1]);
-        return {
-          proposals: parsed.proposals || [],
-          reasoning: parsed.reasoning || "",
-          fleetSummary: parsed.fleet_summary || "",
-        };
+        return extractFields(JSON.parse(jsonMatch[1]));
       } catch {
         // Fall through
       }
     }
 
-    return { proposals: [], reasoning: text, fleetSummary: "" };
+    return { proposals: [], staleExpeditions: [], needsReview: [], reasoning: text, fleetSummary: "" };
   }
 }
 
@@ -405,6 +425,8 @@ export async function runMorningScan({ projectDir, reasoningModel, anthropicApiK
         agent: machineName,
         reasoning: "Auto-picked from backlog (no API key for reasoning)",
       })),
+      staleExpeditions: [],
+      needsReview: [],
       reasoning: "No Anthropic API key — returning top backlog items without LLM reasoning",
       fleetSummary: `${context.kanban.inProgress.length} in-progress, ${context.kanban.backlog.length} in backlog`,
     };
@@ -412,13 +434,15 @@ export async function runMorningScan({ projectDir, reasoningModel, anthropicApiK
 
   return {
     proposals: result.proposals,
+    staleExpeditions: result.staleExpeditions || [],
+    needsReview: result.needsReview || [],
     reasoning: result.reasoning,
     fleetState: {
       agents_busy: context.fleet.agentsBusy || 0,
       agents_available: context.fleet.agentsAvailable || 0,
       wip_count: context.kanban.inProgress.length,
     },
-    stale: context.stale || { stale_count: 0, needs_review_count: 0 },
+    expeditionFacts: context.expeditionFacts || { total: 0, expeditions: [] },
   };
 }
 
