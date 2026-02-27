@@ -19,7 +19,7 @@
  *
  * Environment: See .env.example
  *
- * Epoch 4.1 — ROADMAP-V4-AUTOMATION.md
+ * Epoch 4.1 + 4.6.6 — ROADMAP-V4-AUTOMATION.md
  */
 
 import { createRequire } from "module";
@@ -48,6 +48,7 @@ try {
 
 import { runMorningScan } from "./morning-scan.mjs";
 import { spawnAgent, checkWipLimit } from "./spawner.mjs";
+import { createStaleHandler } from "./stale-handler.mjs";
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
@@ -89,6 +90,10 @@ function log(msg) {
   console.log(`[${ts}] [Bosun] ${msg}`);
 }
 
+// ─── Stale Handler ──────────────────────────────────────────────────────────
+
+const staleHandler = createStaleHandler(config, log, { publishJSON });
+
 // ─── Morning Scan ───────────────────────────────────────────────────────────
 
 async function doScan() {
@@ -108,6 +113,7 @@ async function doScan() {
     const proposalMsg = {
       type: "fleet_proposal",
       proposals: pendingProposals,
+      stale_expeditions: result.staleExpeditions || [],
       fleet_state: result.fleetState || {},
       reasoning: result.reasoning || "",
       scan_time: new Date().toISOString(),
@@ -119,6 +125,14 @@ async function doScan() {
     } else if (natsConn) {
       publishJSON(natsConn.nc, "ship.fleet.proposal", proposalMsg, config.machineName);
       log(`Published ${pendingProposals.length} proposals to ship.fleet.proposal`);
+    }
+
+    // Handle stale expeditions (publish alerts, create chores)
+    if (result.staleExpeditions?.length > 0) {
+      await staleHandler.handleStaleExpeditions(result.staleExpeditions, {
+        natsConn,
+        dryRun,
+      });
     }
 
     return proposalMsg;
@@ -238,6 +252,10 @@ function handleFleetAlert(msg) {
       log(`Agent crashed on ${exp || "unknown"} — consider retry`);
       break;
     }
+
+    case "stale_item":
+      log(`Stale item: ${exp || "unknown"} (${msg.action || "?"}) — ${msg.reasoning || ""}`);
+      break;
 
     default:
       log(`Fleet alert: ${alertType} — ${msg.message || ""}`);

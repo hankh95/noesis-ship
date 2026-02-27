@@ -119,3 +119,32 @@ export async function retryWithMutation(expId, failureHint, options = {}) {
   console.log(`[Bosun] Retry ${expId} with mutation: ${hint}`);
   return spawnAgent(expId, options);
 }
+
+/**
+ * Create a kanban chore via yurtle-kanban CLI.
+ * Used by stale-handler to auto-create remediation chores.
+ *
+ * @param {string} title - Chore title
+ * @param {object} options
+ * @param {object} options.config - Service configuration (needs projectDir)
+ * @returns {Promise<string>} CLI output
+ */
+export async function createChore(title, options = {}) {
+  const { config } = options;
+
+  try {
+    const { stdout, stderr } = await execFile(
+      "yurtle-kanban",
+      ["create", "chore", title, "--push"],
+      {
+        timeout: 30_000,
+        cwd: config.projectDir,
+        env: { ...process.env },
+      },
+    );
+
+    return stdout.trim() || stderr.trim() || `Created chore: ${title}`;
+  } catch (err) {
+    throw new Error(`yurtle-kanban create chore failed: ${err.message}`);
+  }
+}
