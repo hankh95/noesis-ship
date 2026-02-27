@@ -2,29 +2,12 @@
 /**
  * Tests for @noesis-ship/bosun
  *
- * Same test()/assert() pattern as @noesis-ship/shared.
  * Tests pure functions only — no NATS, no subprocess, no API calls.
+ * Pattern: Shared test()/assert() from test-helpers.mjs.
  */
 
+import { test, assert, summary } from "./test-helpers.mjs";
 import { parseProposals, gatherFleetContext } from "./morning-scan.mjs";
-
-let passed = 0;
-let failed = 0;
-
-function test(name, fn) {
-  try {
-    fn();
-    console.log(`  PASS  ${name}`);
-    passed++;
-  } catch (err) {
-    console.log(`  FAIL  ${name}: ${err.message}`);
-    failed++;
-  }
-}
-
-function assert(condition, msg) {
-  if (!condition) throw new Error(msg || "Assertion failed");
-}
 
 // ─── Proposal Parsing Tests ─────────────────────────────────────────────────
 
@@ -242,8 +225,5 @@ tags: [yurtle-first, training]
 
 // ─── Summary ────────────────────────────────────────────────────────────────
 
-console.log(`\n${"=".repeat(40)}`);
-console.log(`Results: ${passed} passed, ${failed} failed`);
-console.log(`${"=".repeat(40)}\n`);
-
-process.exit(failed > 0 ? 1 : 0);
+const failures = summary("Unit tests");
+process.exit(failures > 0 ? 1 : 0);

@@ -7,7 +7,10 @@
   "scripts": {
     "start": "node bosun-service.mjs",
     "scan": "node bosun-service.mjs --scan-once",
-    "test": "node test-bosun.mjs"
+    "test": "node test-bosun.mjs && node test-gather-context.mjs && node test-integration.mjs",
+    "test:unit": "node test-bosun.mjs",
+    "test:context": "node test-gather-context.mjs",
+    "test:integration": "node test-integration.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",

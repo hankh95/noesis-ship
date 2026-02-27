@@ -512,21 +512,20 @@ function tryParseJSON(str, fallback) {
   }
 }
 
-function parseSimpleFrontmatter(text) {
+export function parseSimpleFrontmatter(text) {
   const match = text.match(/^---\n([\s\S]*?)\n---/);
   if (!match) return {};
   const fm = {};
   for (const line of match[1].split("\n")) {
     if (line.trim().startsWith("@prefix") || line.trim().startsWith("<")) continue;
-    const kv = line.split(":", 2);
-    if (kv.length === 2) {
-      const key = kv[0].trim();
-      let val = kv[1].trim().replace(/^["']|["']$/g, "");
-      if (val.startsWith("[") && val.endsWith("]")) {
-        val = val.slice(1, -1).split(",").map((v) => v.trim().replace(/^["']|["']$/g, "")).filter(Boolean);
-      }
-      fm[key] = val;
+    const idx = line.indexOf(":");
+    if (idx === -1) continue;
+    const key = line.slice(0, idx).trim();
+    let val = line.slice(idx + 1).trim().replace(/^["']|["']$/g, "");
+    if (val.startsWith("[") && val.endsWith("]")) {
+      val = val.slice(1, -1).split(",").map((v) => v.trim().replace(/^["']|["']$/g, "")).filter(Boolean);
     }
+    fm[key] = val;
   }
   return fm;
 }
