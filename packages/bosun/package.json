@@ -1,0 +1,17 @@
+{
+  "name": "@noesis-ship/bosun",
+  "version": "0.1.0",
+  "description": "LLM Bosun — proposes work, spawns agents, tracks progress",
+  "type": "module",
+  "main": "bosun-service.mjs",
+  "scripts": {
+    "start": "node bosun-service.mjs",
+    "scan": "node bosun-service.mjs --scan-once",
+    "test": "node test-bosun.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
+    "@noesis-ship/shared": "0.1.0",
+    "dotenv": "^16.4.7"
+  }
+}

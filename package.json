@@ -10,7 +10,8 @@
     "packages/fleet-log",
     "packages/mcp-server",
     "packages/chat",
-    "packages/fleet-status"
+    "packages/fleet-status",
+    "packages/bosun"
   ],
   "scripts": {
     "start": "npm start --workspace=@noesis-ship/relay",
@@ -25,7 +26,10 @@
     "test:daemon": "npm test --workspace=@noesis-ship/daemon",
     "test:relay": "npm test --workspace=@noesis-ship/relay",
     "test:chat": "npm test --workspace=@noesis-ship/chat",
-    "test:fleet-status": "npm test --workspace=@noesis-ship/fleet-status"
+    "test:fleet-status": "npm test --workspace=@noesis-ship/fleet-status",
+    "bosun": "node packages/bosun/bosun-service.mjs",
+    "bosun:scan": "node packages/bosun/bosun-service.mjs --scan-once",
+    "test:bosun": "npm test --workspace=@noesis-ship/bosun"
   },
   "author": "Congruent Systems PBC",
   "license": "ISC"
