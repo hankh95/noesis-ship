@@ -1,0 +1,14 @@
+{
+  "name": "@noesis-ship/fleet-monitor",
+  "version": "0.2.0",
+  "description": "Fleet monitoring service — polls tmux sessions and GitHub PRs, publishes alerts via NATS",
+  "private": true,
+  "main": "monitor.js",
+  "scripts": {
+    "start": "node monitor.js",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "@noesis-ship/shared": "*"
+  }
+}

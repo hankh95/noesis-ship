@@ -8,6 +8,7 @@ const {
   buildMessage,
   buildKanbanEvent,
   buildFleetAlert,
+  buildFleetStatus,
   isFromSelf,
   isFromHuman,
   isDirectedTo,
@@ -15,6 +16,7 @@ const {
   channelSubject,
   fleetAlertSubject,
   FLEET_ALERT_SUBJECT,
+  FLEET_STATUS_SUBJECT,
 } = require("./wire-protocol");
 
 module.exports = {
@@ -29,6 +31,7 @@ module.exports = {
   buildMessage,
   buildKanbanEvent,
   buildFleetAlert,
+  buildFleetStatus,
   isFromSelf,
   isFromHuman,
   isDirectedTo,
@@ -36,4 +39,5 @@ module.exports = {
   channelSubject,
   fleetAlertSubject,
   FLEET_ALERT_SUBJECT,
+  FLEET_STATUS_SUBJECT,
 };

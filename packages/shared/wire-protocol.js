@@ -123,10 +123,31 @@ function fleetAlertSubject() {
   return FLEET_ALERT_SUBJECT;
 }
 
+/**
+ * NATS subject for fleet status snapshots.
+ */
+const FLEET_STATUS_SUBJECT = "ship.fleet.status";
+
+/**
+ * Build a fleet status snapshot payload.
+ * @param {Array} agents - Array of agent session objects ({ name, idleMinutes, attached })
+ * @param {Array} prs - Array of PR status objects ({ number, title, ciStatus, reviewStatus })
+ * @returns {object} Fleet status payload
+ */
+function buildFleetStatus(agents, prs) {
+  return {
+    type: "fleet_status",
+    agents,
+    prs,
+    timestamp: new Date().toISOString(),
+  };
+}
+
 module.exports = {
   buildMessage,
   buildKanbanEvent,
   buildFleetAlert,
+  buildFleetStatus,
   isFromSelf,
   isFromHuman,
   isDirectedTo,
@@ -134,4 +155,5 @@ module.exports = {
   channelSubject,
   fleetAlertSubject,
   FLEET_ALERT_SUBJECT,
+  FLEET_STATUS_SUBJECT,
 };
