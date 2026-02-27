@@ -580,18 +580,31 @@ export async function runMorningScan({ projectDir, reasoningModel, anthropicApiK
 
     // No LLM available — return raw context for manual review
     if (!result) {
+      // Pick items from both development and research boards
+      const devProposals = context.kanban.backlog.slice(0, 2).map((item) => ({
+        exp: item.id,
+        title: item.title,
+        priority: item.priority,
+        agent: machineName,
+        reasoning: "Auto-picked from development backlog (no LLM)",
+      }));
+
+      // Include active research items (experiments needing analysis or execution)
+      const researchProposals = (context.research?.active || []).slice(0, 1).map((item) => ({
+        exp: item.id,
+        title: item.title,
+        priority: "high",
+        phase: item.phase,
+        agent: item.phase === "analysis" ? "DGX" : (item.phase === "execution" ? "M5" : machineName),
+        reasoning: `Research item in ${item.phase || "active"} phase (no LLM)`,
+      }));
+
       result = {
-        proposals: context.kanban.backlog.slice(0, 3).map((item) => ({
-          exp: item.id,
-          title: item.title,
-          priority: item.priority,
-          agent: machineName,
-          reasoning: "Auto-picked from backlog (no LLM available for reasoning)",
-        })),
+        proposals: [...devProposals, ...researchProposals],
         staleExpeditions: [],
         needsReview: [],
-        reasoning: "No LLM available — returning top backlog items without reasoning",
-        fleetSummary: `${context.kanban.inProgress.length} in-progress, ${context.kanban.backlog.length} in backlog`,
+        reasoning: "No LLM available — returning top items from both boards",
+        fleetSummary: `Dev: ${context.kanban.inProgress.length} in-progress, ${context.kanban.backlog.length} backlog. Research: ${context.research?.active?.length || 0} active, ${context.research?.draft?.length || 0} draft`,
         llmSource: "none",
       };
     }
