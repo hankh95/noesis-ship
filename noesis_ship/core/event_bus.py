@@ -311,6 +311,15 @@ class EventTypes:
     # LLM events (summary only, not full exchange)
     LLM_CALL_COMPLETED = "llm.call-completed"
 
+    # Fleet alert events (published to ship.fleet.alert, not JetStream)
+    FLEET_PR_CREATED = "fleet.pr-created"
+    FLEET_PR_REVIEWED = "fleet.pr-reviewed"
+    FLEET_CI_FAILED = "fleet.ci-failed"
+    FLEET_AGENT_STUCK = "fleet.agent-stuck"
+    FLEET_AGENT_CRASH = "fleet.agent-crash"
+    FLEET_ACF_DELTA = "fleet.acf-delta"
+    FLEET_ACF_REGRESSION = "fleet.acf-regression"
+
 
 # Convenience emitters for common events
 class KanbanEvents:
@@ -706,6 +715,108 @@ class LLMEvents:
                 "duration_ms": duration_ms
             }
         )
+
+
+class FleetAlerts:
+    """
+    Publish fleet alerts to ship.fleet.alert NATS subject.
+
+    Unlike other emitters that use JetStream (ship.events.*), fleet alerts
+    publish to ship.fleet.alert via raw NATS so the relay can forward them
+    to WebSocket clients (Command Deck) immediately.
+
+    Usage:
+        await FleetAlerts.pr_created(pr=175, exp="EXP-994", agent="Mini")
+        await FleetAlerts.ci_failed(pr=175, exp="EXP-994")
+        await FleetAlerts.agent_stuck(agent="DGX", exp="EXP-994",
+                                      session="exp-994", idle_minutes=18)
+    """
+
+    SUBJECT = "ship.fleet.alert"
+
+    @staticmethod
+    async def _publish(alert_type: str, payload: Dict[str, Any]) -> bool:
+        """Publish a fleet alert to ship.fleet.alert via raw NATS."""
+        bus = get_event_bus()
+        if not bus.is_connected:
+            await bus.connect()
+
+        alert = {
+            "type": "fleet_alert",
+            "alertType": alert_type,
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            **payload,
+        }
+
+        if bus.nc:
+            try:
+                await bus.nc.publish(
+                    FleetAlerts.SUBJECT,
+                    json.dumps(alert).encode()
+                )
+                logger.info(f"Fleet alert published: {alert_type}")
+                return True
+            except Exception as e:
+                logger.error(f"Failed to publish fleet alert {alert_type}: {e}")
+
+        logger.info(f"Fleet alert (local): {alert_type} - {payload}")
+        return False
+
+    @staticmethod
+    async def pr_created(pr: int, exp: str, agent: str) -> bool:
+        """Alert: agent created a PR."""
+        return await FleetAlerts._publish("pr_created", {
+            "pr": pr, "exp": exp, "agent": agent,
+        })
+
+    @staticmethod
+    async def pr_reviewed(pr: int, reviewer: str, passed: bool) -> bool:
+        """Alert: reviewer posted a review."""
+        return await FleetAlerts._publish("pr_reviewed", {
+            "pr": pr, "reviewer": reviewer, "passed": passed,
+        })
+
+    @staticmethod
+    async def ci_failed(pr: int, exp: str,
+                        details: Optional[str] = None) -> bool:
+        """Alert: CI red on PR branch."""
+        return await FleetAlerts._publish("ci_failed", {
+            "pr": pr, "exp": exp, "details": details,
+        })
+
+    @staticmethod
+    async def agent_stuck(agent: str, exp: str, session: str,
+                          idle_minutes: int) -> bool:
+        """Alert: agent tmux session idle for too long."""
+        return await FleetAlerts._publish("agent_stuck", {
+            "agent": agent, "exp": exp, "session": session,
+            "idle_minutes": idle_minutes,
+        })
+
+    @staticmethod
+    async def agent_crash(agent: str, exp: str, session: str,
+                          exit_code: int) -> bool:
+        """Alert: agent tmux session exited with non-zero code."""
+        return await FleetAlerts._publish("agent_crash", {
+            "agent": agent, "exp": exp, "session": session,
+            "exit_code": exit_code,
+        })
+
+    @staticmethod
+    async def acf_delta(pr: int, exp: str, delta: float,
+                        being: str) -> bool:
+        """Alert: ACF measurement complete."""
+        return await FleetAlerts._publish("acf_delta", {
+            "pr": pr, "exp": exp, "delta": delta, "being": being,
+        })
+
+    @staticmethod
+    async def acf_regression(pr: int, exp: str, delta: float,
+                             being: str) -> bool:
+        """Alert: negative ACF delta (red flag)."""
+        return await FleetAlerts._publish("acf_regression", {
+            "pr": pr, "exp": exp, "delta": delta, "being": being,
+        })
 
 
 if __name__ == "__main__":

@@ -101,6 +101,22 @@ async function initNATS() {
       }
     })();
 
+    // Subscribe to fleet alerts and status from NATS (EXP-994)
+    const fleetSub = natsConnection.subscribe("ship.fleet.>");
+    (async () => {
+      for await (const msg of fleetSub) {
+        try {
+          const data = sc.decode(msg.data);
+          const parsed = JSON.parse(data);
+          console.log(`[NATS] Fleet event: ${msg.subject}`, parsed.alertType || parsed.type || "");
+          // Relay fleet events to all WebSocket clients (Command Deck)
+          broadcastToClients(parsed);
+        } catch (err) {
+          console.error(`[NATS] Error processing fleet event:`, err.message);
+        }
+      }
+    })();
+
     // Handle connection errors
     (async () => {
       for await (const status of natsConnection.status()) {

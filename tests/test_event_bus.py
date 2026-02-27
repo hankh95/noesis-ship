@@ -9,6 +9,7 @@ from noesis_ship.core.event_bus import (
     KanbanEvents,
     RunnerEvents,
     BeingEvents,
+    FleetAlerts,
 )
 
 
@@ -192,3 +193,76 @@ class TestPatternMatching:
         assert bus._matches_pattern("being.agent1.thinking", "being.>")
         assert bus._matches_pattern("being.agent1.error", "being.>")
         assert not bus._matches_pattern("kanban.item-moved", "being.>")
+
+
+class TestFleetAlertEventTypes:
+    """Test that fleet alert EventTypes constants are defined."""
+
+    def test_fleet_pr_created(self):
+        assert EventTypes.FLEET_PR_CREATED == "fleet.pr-created"
+
+    def test_fleet_ci_failed(self):
+        assert EventTypes.FLEET_CI_FAILED == "fleet.ci-failed"
+
+    def test_fleet_agent_stuck(self):
+        assert EventTypes.FLEET_AGENT_STUCK == "fleet.agent-stuck"
+
+    def test_fleet_agent_crash(self):
+        assert EventTypes.FLEET_AGENT_CRASH == "fleet.agent-crash"
+
+    def test_fleet_acf_delta(self):
+        assert EventTypes.FLEET_ACF_DELTA == "fleet.acf-delta"
+
+    def test_fleet_acf_regression(self):
+        assert EventTypes.FLEET_ACF_REGRESSION == "fleet.acf-regression"
+
+
+class TestFleetAlerts:
+    """Test FleetAlerts class — methods should not raise regardless of NATS state."""
+
+    def test_subject_constant(self):
+        assert FleetAlerts.SUBJECT == "ship.fleet.alert"
+
+    @pytest.mark.asyncio
+    async def test_pr_created_does_not_raise(self):
+        """pr_created should return a bool without raising."""
+        result = await FleetAlerts.pr_created(pr=175, exp="EXP-994", agent="Mini")
+        assert isinstance(result, bool)
+
+    @pytest.mark.asyncio
+    async def test_ci_failed_does_not_raise(self):
+        result = await FleetAlerts.ci_failed(pr=176, exp="EXP-995")
+        assert isinstance(result, bool)
+
+    @pytest.mark.asyncio
+    async def test_agent_stuck_does_not_raise(self):
+        result = await FleetAlerts.agent_stuck(
+            agent="DGX", exp="EXP-994", session="exp-994", idle_minutes=18
+        )
+        assert isinstance(result, bool)
+
+    @pytest.mark.asyncio
+    async def test_agent_crash_does_not_raise(self):
+        result = await FleetAlerts.agent_crash(
+            agent="Mini", exp="EXP-994", session="exp-994", exit_code=1
+        )
+        assert isinstance(result, bool)
+
+    @pytest.mark.asyncio
+    async def test_acf_delta_does_not_raise(self):
+        result = await FleetAlerts.acf_delta(
+            pr=175, exp="EXP-994", delta=0.03, being="santiago-toddler-v12"
+        )
+        assert isinstance(result, bool)
+
+    @pytest.mark.asyncio
+    async def test_acf_regression_does_not_raise(self):
+        result = await FleetAlerts.acf_regression(
+            pr=176, exp="EXP-995", delta=-0.02, being="santiago-toddler-v12"
+        )
+        assert isinstance(result, bool)
+
+    @pytest.mark.asyncio
+    async def test_pr_reviewed_does_not_raise(self):
+        result = await FleetAlerts.pr_reviewed(pr=175, reviewer="DGX", passed=True)
+        assert isinstance(result, bool)

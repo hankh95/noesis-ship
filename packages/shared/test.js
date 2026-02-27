@@ -7,11 +7,14 @@ const {
   loadConfig,
   buildMessage,
   buildKanbanEvent,
+  buildFleetAlert,
   isFromSelf,
   isFromHuman,
   isDirectedTo,
   isFromAgent,
   channelSubject,
+  fleetAlertSubject,
+  FLEET_ALERT_SUBJECT,
 } = require("./index");
 
 let passed = 0;
@@ -113,6 +116,47 @@ test("isFromAgent detects agent messages", () => {
 test("channelSubject builds correct NATS subject", () => {
   assert(channelSubject("fleet") === "ship.channel.fleet", "fleet");
   assert(channelSubject("session:active") === "ship.channel.session:active", "session");
+});
+
+// ─── Fleet Alert Tests ─────────────────────────────────────────────────────
+
+console.log("\n--- Fleet Alert Tests ---");
+
+test("buildFleetAlert creates valid payload", () => {
+  const alert = buildFleetAlert("pr_created", { pr: 175, exp: "EXP-994", agent: "Mini" });
+  assert(alert.type === "fleet_alert", `type: ${alert.type}`);
+  assert(alert.alertType === "pr_created", `alertType: ${alert.alertType}`);
+  assert(alert.pr === 175, `pr: ${alert.pr}`);
+  assert(alert.exp === "EXP-994", `exp: ${alert.exp}`);
+  assert(alert.agent === "Mini", `agent: ${alert.agent}`);
+  assert(alert.timestamp, "missing timestamp");
+});
+
+test("buildFleetAlert spreads payload fields", () => {
+  const alert = buildFleetAlert("agent_stuck", {
+    agent: "DGX", exp: "EXP-994", session: "exp-994", idle_minutes: 18,
+  });
+  assert(alert.alertType === "agent_stuck", `alertType: ${alert.alertType}`);
+  assert(alert.agent === "DGX", `agent: ${alert.agent}`);
+  assert(alert.session === "exp-994", `session: ${alert.session}`);
+  assert(alert.idle_minutes === 18, `idle_minutes: ${alert.idle_minutes}`);
+});
+
+test("buildFleetAlert works with acf_delta", () => {
+  const alert = buildFleetAlert("acf_delta", {
+    pr: 175, exp: "EXP-994", delta: 0.03, being: "santiago-toddler-v12",
+  });
+  assert(alert.alertType === "acf_delta", `alertType: ${alert.alertType}`);
+  assert(alert.delta === 0.03, `delta: ${alert.delta}`);
+  assert(alert.being === "santiago-toddler-v12", `being: ${alert.being}`);
+});
+
+test("FLEET_ALERT_SUBJECT is correct", () => {
+  assert(FLEET_ALERT_SUBJECT === "ship.fleet.alert", `subject: ${FLEET_ALERT_SUBJECT}`);
+});
+
+test("fleetAlertSubject returns correct subject", () => {
+  assert(fleetAlertSubject() === "ship.fleet.alert", `subject: ${fleetAlertSubject()}`);
 });
 
 // ─── Summary ────────────────────────────────────────────────────────────────
