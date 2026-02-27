@@ -20,24 +20,42 @@ const execFile = promisify(execFileCb);
 
 const BOSUN_SYSTEM_PROMPT = `You are the Bosun of a neurosymbolic AI research fleet. Your job is to propose the highest-impact work items for the fleet's agents.
 
-You receive:
-- Kanban state (backlog expeditions with priorities)
-- Fleet health (which agents are busy/available, active tmux sessions)
-- ACF history (recent being performance scores — ACF is the reward signal)
-- Active hypotheses (research questions being tested)
-- Expedition facts (file references, ages, missing files — YOU decide staleness)
+You receive data from TWO boards:
+
+1. **Development Board** (kanban-work/) — nautical preset
+   - States: backlog → planning → ready → in_progress → review → done
+   - Item types: expeditions, chores, ideas
+   - WIP limit: 4 underway
+
+2. **Research Board** (research/) — HDD preset
+   - States: draft → active → complete | abandoned
+   - Item types: hypotheses, experiments, papers, literature, measures, ideas
+   - Research items use HDD phases: discovery → design → execution → analysis → writing
+   - WIP limit: 5 active
+
+Also: Fleet health, ACF history, active hypotheses, expedition facts.
 
 Rules:
-- Maximum 3 proposals per scan
-- Respect WIP limits: max 2 expeditions per agent, max 5 total in-progress
-- High-priority and critical expeditions first
-- Match expedition tags to agent capabilities:
-  - DGX: GPU training, large models, ACF measurement, heavy computation
-  - M5: Code quality, architecture, automation, testing, documentation
-  - Mini: Infrastructure, CI/CD, monitoring, fleet tooling
-- Never propose work that duplicates in-progress expeditions
+- Maximum 3 proposals per scan (can be from either board)
+- Respect WIP limits per board
+- High-priority and critical items first
+- Match work to agent capabilities and HDD phase:
+  - DGX: GPU training, large models, ACF measurement, heavy computation, **analysis phase**
+  - M5: Code quality, architecture, automation, testing, documentation, **execution phase (code implementation)**
+  - Mini: Infrastructure, CI/CD, monitoring, fleet tooling, **execution phase (infra)**
+  - Architect: **discovery & design phases** (system design, experiment protocol)
+- Never propose work that duplicates in-progress items
 - If ACF scores dropped recently, prioritize investigations/fixes
 - If all agents are busy and at WIP limit, propose nothing
+
+HDD Phase Routing:
+| Phase | Agent | Action |
+|-------|-------|--------|
+| discovery | Architect/DGX | Literature review, hypothesis refinement |
+| design | Architect/DGX | Experiment protocol, measures definition |
+| execution | M5/Mini | Implementation, data collection |
+| analysis | DGX | Compare results to targets, statistics |
+| writing | Any | Draft paper sections |
 
 Staleness analysis (from expedition facts):
 - Missing files ALONE don't mean stale — files may have been renamed or the expedition is about creating them
@@ -114,6 +132,91 @@ async function getKanbanState(projectDir) {
   // Fallback: read expedition files directly
   const fallback = await readExpeditionFiles(projectDir);
   return { ...fallback, source: "file-glob" };
+}
+
+/**
+ * Get research board state: HDD items (hypotheses, experiments, papers, etc.)
+ * Uses yurtle-kanban CLI with --board research flag.
+ */
+async function getResearchBoardState(projectDir) {
+  // Query research board — HDD items have states: draft, active, complete, abandoned
+  const draft = await runCmd("yurtle-kanban", ["list", "--board", "research", "--status", "draft", "--json"], { cwd: projectDir });
+  const active = await runCmd("yurtle-kanban", ["list", "--board", "research", "--status", "active", "--json"], { cwd: projectDir });
+  const complete = await runCmd("yurtle-kanban", ["list", "--board", "research", "--status", "complete", "--json"], { cwd: projectDir });
+
+  const draftItems = tryParseJSON(draft, []);
+  const activeItems = tryParseJSON(active, []);
+  const completeItems = tryParseJSON(complete, []);
+
+  // If we got any data, return it
+  if (draftItems.length > 0 || activeItems.length > 0 || completeItems.length > 0) {
+    return {
+      draft: draftItems,
+      active: activeItems,
+      complete: completeItems,
+      source: "yurtle-kanban",
+    };
+  }
+
+  // Fallback: read research files directly
+  return await readResearchFiles(projectDir);
+}
+
+/**
+ * Fallback: read research files (hypotheses, experiments) and parse frontmatter.
+ */
+async function readResearchFiles(projectDir) {
+  const draft = [];
+  const active = [];
+  const complete = [];
+
+  const dirs = [
+    { path: path.join(projectDir, "research", "hypotheses"), prefix: "H" },
+    { path: path.join(projectDir, "research", "experiments"), prefix: "EXPR-" },
+    { path: path.join(projectDir, "research", "ideas"), prefix: "IDEA-" },
+    { path: path.join(projectDir, "research", "literature"), prefix: "LIT-" },
+    { path: path.join(projectDir, "research", "papers"), prefix: "PAPER-" },
+    { path: path.join(projectDir, "research", "measures"), prefix: "M-" },
+  ];
+
+  try {
+    const { readdir } = await import("fs/promises");
+
+    for (const { path: dirPath, prefix } of dirs) {
+      try {
+        const files = await readdir(dirPath);
+        for (const f of files) {
+          if (!f.endsWith(".md") || f.startsWith(".")) continue;
+          try {
+            const content = await readFile(path.join(dirPath, f), "utf-8");
+            const fm = parseSimpleFrontmatter(content);
+            if (!fm.id && !fm.title) continue;
+
+            const item = {
+              id: fm.id || `${prefix}${f.replace(".md", "")}`,
+              title: fm.title || f,
+              status: fm.status || "draft",
+              phase: fm.phase || null,
+              type: prefix.replace("-", "").toLowerCase(),
+              tags: fm.tags || [],
+            };
+
+            if (item.status === "draft") draft.push(item);
+            else if (item.status === "active") active.push(item);
+            else if (item.status === "complete" || item.status === "completed") complete.push(item);
+          } catch {
+            // Skip unreadable files
+          }
+        }
+      } catch {
+        // Directory doesn't exist
+      }
+    }
+  } catch {
+    // fs/promises not available
+  }
+
+  return { draft, active, complete, source: "file-glob" };
 }
 
 /**
@@ -259,8 +362,9 @@ async function getExpeditionFacts(projectDir) {
  * Gather all fleet context in parallel.
  */
 export async function gatherFleetContext(projectDir, cachedFleetStatus) {
-  const [kanban, fleet, acf, hypotheses, expeditionFacts] = await Promise.all([
+  const [kanban, research, fleet, acf, hypotheses, expeditionFacts] = await Promise.all([
     getKanbanState(projectDir),
+    getResearchBoardState(projectDir),
     getFleetHealth(),
     getAcfHistory(projectDir),
     getHypotheses(projectDir),
@@ -269,6 +373,7 @@ export async function gatherFleetContext(projectDir, cachedFleetStatus) {
 
   return {
     kanban,
+    research,  // HDD research board items
     fleet: cachedFleetStatus || fleet,
     acf,
     hypotheses,
@@ -284,9 +389,9 @@ export async function gatherFleetContext(projectDir, cachedFleetStatus) {
 function formatContext(context) {
   const sections = [];
 
-  // Kanban
+  // Development Board (Kanban)
   const { backlog, inProgress } = context.kanban;
-  sections.push("## Kanban State");
+  sections.push("## Development Board (kanban-work/)");
   sections.push(`In-progress (${inProgress.length}):`);
   for (const item of inProgress) {
     sections.push(`  - ${item.id}: ${item.title} [${item.priority}] assigned=${item.assignee || "none"}`);
@@ -294,6 +399,25 @@ function formatContext(context) {
   sections.push(`Backlog (${backlog.length}):`);
   for (const item of backlog.slice(0, 15)) {
     sections.push(`  - ${item.id}: ${item.title} [${item.priority}] tags=${(item.tags || []).join(",")}`);
+  }
+
+  // Research Board (HDD items)
+  if (context.research) {
+    const { draft = [], active = [], complete = [] } = context.research;
+    sections.push("\n## Research Board (research/) — HDD Items");
+    sections.push("Uses HDD states: draft → active → complete | abandoned");
+    sections.push(`Active (${active.length}):`);
+    for (const item of active.slice(0, 10)) {
+      sections.push(`  - ${item.id}: ${item.title} [phase=${item.phase || "?"}] type=${item.type || "?"}`);
+    }
+    sections.push(`Draft (${draft.length}):`);
+    for (const item of draft.slice(0, 10)) {
+      sections.push(`  - ${item.id}: ${item.title} type=${item.type || "?"}`);
+    }
+    sections.push(`Recently complete (${complete.length}):`);
+    for (const item of complete.slice(0, 5)) {
+      sections.push(`  - ${item.id}: ${item.title}`);
+    }
   }
 
   // Fleet

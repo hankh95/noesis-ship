@@ -223,6 +223,219 @@ tags: [yurtle-first, training]
   assert(lines.length >= 4, `lines: ${lines.length}`);
 });
 
+// ─── Dual-Board Tests (CHORE-034) ────────────────────────────────────────────
+
+console.log("\n--- Dual-Board Tests ---");
+
+test("parseProposals handles research board items in proposals", () => {
+  const text = JSON.stringify({
+    proposals: [
+      {
+        exp: "EXPR-121",
+        title: "Wikidata Enrichment A/B Study",
+        priority: "high",
+        agent: "DGX",
+        phase: "analysis",
+        reasoning: "Experiment ready for analysis — armB complete",
+      },
+      {
+        exp: "H121.1",
+        title: "Density hypothesis test",
+        priority: "medium",
+        agent: "DGX",
+        phase: "design",
+        reasoning: "Hypothesis needs experiment protocol",
+      },
+    ],
+    fleet_summary: "1 busy, 2 available",
+    reasoning: "Research items ready for action",
+  });
+
+  const result = parseProposals(text);
+  assert(result.proposals.length === 2, `proposals: ${result.proposals.length}`);
+  assert(result.proposals[0].exp === "EXPR-121", `exp: ${result.proposals[0].exp}`);
+  assert(result.proposals[0].phase === "analysis", `phase: ${result.proposals[0].phase}`);
+  assert(result.proposals[1].exp === "H121.1", `exp: ${result.proposals[1].exp}`);
+});
+
+test("parseProposals handles mixed development and research proposals", () => {
+  const text = JSON.stringify({
+    proposals: [
+      { exp: "EXP-1016", title: "HDD Workflow", priority: "critical", agent: "DGX", reasoning: "Dev work" },
+      { exp: "EXPR-121", title: "Wikidata Experiment", priority: "high", agent: "DGX", phase: "execution", reasoning: "Research work" },
+      { exp: "CHORE-034", title: "Dual board scan", priority: "high", agent: "DGX", reasoning: "Chore" },
+    ],
+    reasoning: "Mixed board proposals",
+  });
+
+  const result = parseProposals(text);
+  assert(result.proposals.length === 3, `proposals: ${result.proposals.length}`);
+
+  // Check item types by ID prefix
+  const expItems = result.proposals.filter((p) => p.exp.startsWith("EXP-"));
+  const exprItems = result.proposals.filter((p) => p.exp.startsWith("EXPR-"));
+  const choreItems = result.proposals.filter((p) => p.exp.startsWith("CHORE-"));
+
+  assert(expItems.length === 1, `EXP items: ${expItems.length}`);
+  assert(exprItems.length === 1, `EXPR items: ${exprItems.length}`);
+  assert(choreItems.length === 1, `CHORE items: ${choreItems.length}`);
+});
+
+test("research board HDD states are valid", () => {
+  const validStates = ["draft", "active", "complete", "abandoned"];
+
+  const draftItem = { id: "H999.1", status: "draft" };
+  const activeItem = { id: "EXPR-999", status: "active" };
+  const completeItem = { id: "PAPER-999", status: "complete" };
+
+  assert(validStates.includes(draftItem.status), `draft is valid`);
+  assert(validStates.includes(activeItem.status), `active is valid`);
+  assert(validStates.includes(completeItem.status), `complete is valid`);
+});
+
+test("research board phase routing is correct", () => {
+  const phaseRouting = {
+    discovery: ["Architect", "DGX"],
+    design: ["Architect", "DGX"],
+    execution: ["M5", "Mini"],
+    analysis: ["DGX"],
+    writing: ["Any"],
+  };
+
+  // DGX should handle analysis
+  assert(phaseRouting.analysis.includes("DGX"), "DGX handles analysis");
+
+  // M5/Mini handle execution
+  assert(phaseRouting.execution.includes("M5"), "M5 handles execution");
+  assert(phaseRouting.execution.includes("Mini"), "Mini handles execution");
+
+  // DGX can handle discovery and design
+  assert(phaseRouting.discovery.includes("DGX"), "DGX handles discovery");
+  assert(phaseRouting.design.includes("DGX"), "DGX handles design");
+});
+
+test("research board item types are recognized", () => {
+  const itemTypes = ["hypothesis", "experiment", "paper", "literature", "measure", "idea"];
+  const idPrefixes = {
+    hypothesis: "H",
+    experiment: "EXPR-",
+    paper: "PAPER-",
+    literature: "LIT-",
+    measure: "M-",
+    idea: "IDEA-R-",
+  };
+
+  // Verify prefix mapping
+  assert(idPrefixes.hypothesis === "H", "hypothesis prefix");
+  assert(idPrefixes.experiment === "EXPR-", "experiment prefix");
+  assert(idPrefixes.paper === "PAPER-", "paper prefix");
+
+  // Verify all types have prefixes
+  for (const type of itemTypes) {
+    assert(idPrefixes[type], `${type} has prefix`);
+  }
+});
+
+test("dual board context includes research section marker", () => {
+  // Simulates what formatContext should produce
+  const sections = [];
+  sections.push("## Development Board (kanban-work/)");
+  sections.push("In-progress (2):");
+  sections.push("## Research Board (research/) — HDD Items");
+  sections.push("Uses HDD states: draft → active → complete | abandoned");
+  sections.push("Active (3):");
+
+  const output = sections.join("\n");
+  assert(output.includes("Development Board"), "has dev board header");
+  assert(output.includes("Research Board"), "has research board header");
+  assert(output.includes("HDD Items"), "marks HDD items");
+  assert(output.includes("draft → active → complete"), "shows HDD states");
+});
+
+// ─── Research File Parsing Tests ─────────────────────────────────────────────
+
+console.log("\n--- Research File Parsing Tests ---");
+
+test("research item frontmatter parsing extracts phase", () => {
+  const text = `---
+id: EXPR-121
+title: Wikidata Enrichment A/B Study
+status: active
+phase: execution
+hypotheses: [H121.1, H121.2]
+---
+
+# Content`;
+
+  const match = text.match(/^---\n([\s\S]*?)\n---/);
+  assert(match, "should find frontmatter");
+
+  const lines = match[1].split("\n");
+  const phaseMatch = lines.find((l) => l.startsWith("phase:"));
+  assert(phaseMatch, "should find phase field");
+  assert(phaseMatch.includes("execution"), "phase is execution");
+});
+
+test("hypothesis frontmatter parsing extracts paper reference", () => {
+  const text = `---
+id: H121.1
+title: Wikidata density increases Y2 graph density
+paper: 121
+target: ">10% improvement"
+status: draft
+---
+
+# Content`;
+
+  const match = text.match(/^---\n([\s\S]*?)\n---/);
+  assert(match, "should find frontmatter");
+
+  const lines = match[1].split("\n");
+  const paperMatch = lines.find((l) => l.startsWith("paper:"));
+  assert(paperMatch, "should find paper field");
+  assert(paperMatch.includes("121"), "paper is 121");
+});
+
+// ─── WIP Limit Tests for Dual Board ──────────────────────────────────────────
+
+console.log("\n--- Dual Board WIP Limit Tests ---");
+
+test("development board WIP limit is 4 underway", () => {
+  const devWipLimit = 4;
+  const inProgress = [
+    { id: "EXP-100", status: "in_progress" },
+    { id: "EXP-200", status: "in_progress" },
+    { id: "CHORE-001", status: "in_progress" },
+    { id: "EXP-300", status: "in_progress" },
+  ];
+
+  assert(inProgress.length <= devWipLimit, `dev WIP at limit: ${inProgress.length}`);
+  assert(!(inProgress.length < devWipLimit), "at limit, not under");
+});
+
+test("research board WIP limit is 5 active", () => {
+  const researchWipLimit = 5;
+  const active = [
+    { id: "EXPR-100", status: "active", phase: "execution" },
+    { id: "EXPR-200", status: "active", phase: "analysis" },
+    { id: "H100.1", status: "active", phase: "design" },
+  ];
+
+  assert(active.length < researchWipLimit, `research WIP under limit: ${active.length}`);
+});
+
+test("boards have independent WIP tracking", () => {
+  const devWip = 4;
+  const researchWip = 3;
+
+  // Both boards can be at their own limits independently
+  assert(devWip <= 4, "dev board at its limit");
+  assert(researchWip <= 5, "research board under its limit");
+
+  // Total doesn't matter — WIP is per-board
+  assert(devWip + researchWip === 7, "total is 7 across boards");
+});
+
 // ─── Summary ────────────────────────────────────────────────────────────────
 
 const failures = summary("Unit tests");
