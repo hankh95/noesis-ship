@@ -253,6 +253,11 @@ function handleFleetStatus(msg) {
 function handleKanbanEvent(subject, data) {
   const { event, item_id, item_type, title, assignee } = data;
 
+  if (!item_id) {
+    log(`Kanban: Malformed ${subject} event — missing item_id`);
+    return;
+  }
+
   switch (subject) {
     case "ship.kanban.idea.created":
       log(`Kanban: New idea ${item_id} — "${title || "?"}" (architect evaluation pending)`);
@@ -338,6 +343,7 @@ async function subscribeAll(nc, sc) {
     for await (const msg of kanbanSub) {
       try {
         const data = decodeJSON(msg);
+        if (data.origin === config.machineName) continue;
         handleKanbanEvent(msg.subject, data);
       } catch (err) {
         log(`Kanban event error: ${err.message}`);
