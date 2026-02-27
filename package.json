@@ -35,8 +35,5 @@
     "test:fleet-monitor": "npm test --workspace=@noesis-ship/fleet-monitor"
   },
   "author": "Congruent Systems PBC",
-  "license": "ISC",
-  "dependencies": {
-    "pm2": "^6.0.14"
-  }
+  "license": "ISC"
 }

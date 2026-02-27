@@ -11,7 +11,7 @@
 
 import { execFile as execFileCb } from "child_process";
 import { promisify } from "util";
-import { readFile } from "fs/promises";
+import { readFile, readdir } from "fs/promises";
 import path from "path";
 
 const execFile = promisify(execFileCb);
@@ -142,66 +142,72 @@ async function getKanbanState(projectDir) {
  * This is reliable since research items are markdown files with frontmatter.
  */
 async function getResearchBoardState(projectDir) {
-  // Read research files directly (6 directories)
+  // Read research files directly (5 directories — hypotheses excluded, see readResearchFiles note)
   // Future: When yurtle-kanban adds `list --board research`, we can switch to CLI
-  return await readResearchFiles(projectDir);
+  try {
+    return await readResearchFiles(projectDir);
+  } catch {
+    return { draft: [], active: [], complete: [], abandoned: [], source: "error" };
+  }
 }
 
 /**
- * Fallback: read research files (hypotheses, experiments) and parse frontmatter.
+ * Fallback: read research files (experiments, ideas, etc.) and parse frontmatter.
+ *
+ * NOTE: hypotheses use TTL (Turtle RDF) frontmatter, not YAML.
+ * parseSimpleFrontmatter() skips @prefix and <> lines, so all hypothesis
+ * files would be silently dropped. Excluded until a TTL parser is added.
+ * TODO: Add TTL frontmatter parser to include hypotheses (follow-up ticket).
  */
-async function readResearchFiles(projectDir) {
+export async function readResearchFiles(projectDir) {
   const draft = [];
   const active = [];
   const complete = [];
+  const abandoned = [];
 
   const dirs = [
-    { path: path.join(projectDir, "research", "hypotheses"), prefix: "H" },
-    { path: path.join(projectDir, "research", "experiments"), prefix: "EXPR-" },
-    { path: path.join(projectDir, "research", "ideas"), prefix: "IDEA-" },
-    { path: path.join(projectDir, "research", "literature"), prefix: "LIT-" },
-    { path: path.join(projectDir, "research", "papers"), prefix: "PAPER-" },
-    { path: path.join(projectDir, "research", "measures"), prefix: "M-" },
+    // { path: ..., prefix: "H", type: "hypothesis" },  // TODO: uses TTL frontmatter — needs TTL parser
+    { path: path.join(projectDir, "research", "experiments"), prefix: "EXPR-", type: "experiment" },
+    { path: path.join(projectDir, "research", "ideas"), prefix: "IDEA-", type: "idea" },
+    { path: path.join(projectDir, "research", "literature"), prefix: "LIT-", type: "literature" },
+    { path: path.join(projectDir, "research", "papers"), prefix: "PAPER-", type: "paper" },
+    { path: path.join(projectDir, "research", "measures"), prefix: "M-", type: "measure" },
   ];
 
-  try {
-    const { readdir } = await import("fs/promises");
+  for (const { path: dirPath, prefix, type } of dirs) {
+    try {
+      const files = await readdir(dirPath);
+      for (const f of files) {
+        if (!f.endsWith(".md") || f.startsWith(".")) continue;
+        try {
+          const content = await readFile(path.join(dirPath, f), "utf-8");
+          const fm = parseSimpleFrontmatter(content);
+          if (!fm.id && !fm.title) continue;
 
-    for (const { path: dirPath, prefix } of dirs) {
-      try {
-        const files = await readdir(dirPath);
-        for (const f of files) {
-          if (!f.endsWith(".md") || f.startsWith(".")) continue;
-          try {
-            const content = await readFile(path.join(dirPath, f), "utf-8");
-            const fm = parseSimpleFrontmatter(content);
-            if (!fm.id && !fm.title) continue;
+          const item = {
+            id: fm.id || `${prefix}${f.replace(".md", "")}`,
+            title: fm.title || f,
+            status: fm.status || "draft",
+            phase: fm.phase || null,
+            type,
+            assignee: fm.assignee || null,
+            tags: fm.tags || [],
+          };
 
-            const item = {
-              id: fm.id || `${prefix}${f.replace(".md", "")}`,
-              title: fm.title || f,
-              status: fm.status || "draft",
-              phase: fm.phase || null,
-              type: prefix.replace("-", "").toLowerCase(),
-              tags: fm.tags || [],
-            };
-
-            if (item.status === "draft") draft.push(item);
-            else if (item.status === "active") active.push(item);
-            else if (item.status === "complete" || item.status === "completed") complete.push(item);
-          } catch {
-            // Skip unreadable files
-          }
+          if (item.status === "draft") draft.push(item);
+          else if (item.status === "active") active.push(item);
+          else if (item.status === "complete" || item.status === "completed") complete.push(item);
+          else if (item.status === "abandoned") abandoned.push(item);
+        } catch {
+          // Skip unreadable files
         }
-      } catch {
-        // Directory doesn't exist
       }
+    } catch {
+      // Directory doesn't exist
     }
-  } catch {
-    // fs/promises not available
   }
 
-  return { draft, active, complete, source: "file-glob" };
+  return { draft, active, complete, abandoned, source: "file-glob" };
 }
 
 /**
@@ -213,7 +219,6 @@ async function readExpeditionFiles(projectDir) {
   const inProgress = [];
 
   try {
-    const { readdir } = await import("fs/promises");
     const files = await readdir(expDir);
 
     for (const f of files) {
@@ -388,12 +393,12 @@ function formatContext(context) {
 
   // Research Board (HDD items)
   if (context.research) {
-    const { draft = [], active = [], complete = [] } = context.research;
+    const { draft = [], active = [], complete = [], abandoned = [] } = context.research;
     sections.push("\n## Research Board (research/) — HDD Items");
     sections.push("Uses HDD states: draft → active → complete | abandoned");
     sections.push(`Active (${active.length}):`);
     for (const item of active.slice(0, 10)) {
-      sections.push(`  - ${item.id}: ${item.title} [phase=${item.phase || "?"}] type=${item.type || "?"}`);
+      sections.push(`  - ${item.id}: ${item.title} [phase=${item.phase || "?"}] type=${item.type || "?"} assigned=${item.assignee || "none"}`);
     }
     sections.push(`Draft (${draft.length}):`);
     for (const item of draft.slice(0, 10)) {
@@ -402,6 +407,12 @@ function formatContext(context) {
     sections.push(`Recently complete (${complete.length}):`);
     for (const item of complete.slice(0, 5)) {
       sections.push(`  - ${item.id}: ${item.title}`);
+    }
+    if (abandoned.length > 0) {
+      sections.push(`Abandoned (${abandoned.length}) — do NOT re-propose:`);
+      for (const item of abandoned.slice(0, 5)) {
+        sections.push(`  - ${item.id}: ${item.title}`);
+      }
     }
   }
 
@@ -593,7 +604,7 @@ export async function runMorningScan({ projectDir, reasoningModel, anthropicApiK
       const researchProposals = (context.research?.active || []).slice(0, 1).map((item) => ({
         exp: item.id,
         title: item.title,
-        priority: "high",
+        priority: item.priority || "medium",
         phase: item.phase,
         agent: item.phase === "analysis" ? "DGX" : (item.phase === "execution" ? "M5" : machineName),
         reasoning: `Research item in ${item.phase || "active"} phase (no LLM)`,

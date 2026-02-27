@@ -7,7 +7,10 @@
  */
 
 import { test, assert, summary } from "./test-helpers.mjs";
-import { parseProposals, gatherFleetContext } from "./morning-scan.mjs";
+import { parseProposals, gatherFleetContext, readResearchFiles, parseSimpleFrontmatter } from "./morning-scan.mjs";
+import { mkdtemp, mkdir, writeFile, rm } from "fs/promises";
+import { tmpdir } from "os";
+import path from "path";
 
 // ─── Proposal Parsing Tests ─────────────────────────────────────────────────
 
@@ -436,7 +439,236 @@ test("boards have independent WIP tracking", () => {
   assert(devWip + researchWip === 7, "total is 7 across boards");
 });
 
+// ─── parseSimpleFrontmatter Behavioral Tests ────────────────────────────────
+
+console.log("\n--- parseSimpleFrontmatter Behavioral Tests ---");
+
+test("parseSimpleFrontmatter extracts YAML fields", () => {
+  const text = `---
+id: EXPR-121
+title: Wikidata Enrichment A/B Study
+status: active
+phase: execution
+assignee: DGX
+tags: [wikidata, experiment]
+---
+
+# Content here`;
+
+  const fm = parseSimpleFrontmatter(text);
+  assert(fm.id === "EXPR-121", `id: ${fm.id}`);
+  assert(fm.title === "Wikidata Enrichment A/B Study", `title: ${fm.title}`);
+  assert(fm.status === "active", `status: ${fm.status}`);
+  assert(fm.phase === "execution", `phase: ${fm.phase}`);
+  assert(fm.assignee === "DGX", `assignee: ${fm.assignee}`);
+  assert(Array.isArray(fm.tags), "tags is array");
+  assert(fm.tags.includes("wikidata"), "tags includes wikidata");
+});
+
+test("parseSimpleFrontmatter returns {} for no frontmatter", () => {
+  const text = "# Just a heading\n\nNo frontmatter here.";
+  const fm = parseSimpleFrontmatter(text);
+  assert(Object.keys(fm).length === 0, `keys: ${Object.keys(fm).length}`);
+});
+
+test("parseSimpleFrontmatter skips TTL lines (returns empty for hypothesis files)", () => {
+  const text = `---
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix hyp: <https://nusy.dev/hypothesis/> .
+
+<#H101.2> a hyp:Hypothesis ;
+    hyp:paper "101"^^xsd:integer ;
+    rdfs:label "7-step pipeline" .
+---
+
+# Content`;
+
+  const fm = parseSimpleFrontmatter(text);
+  // All lines start with @ or < — should all be skipped
+  assert(!fm.id, "no id extracted from TTL");
+  assert(!fm.title, "no title extracted from TTL");
+});
+
+test("parseSimpleFrontmatter handles quoted values", () => {
+  const text = `---
+id: EXP-999
+title: "A Quoted Title"
+status: backlog
+---`;
+
+  const fm = parseSimpleFrontmatter(text);
+  assert(fm.title === "A Quoted Title", `title: ${fm.title}`);
+});
+
+// ─── readResearchFiles Behavioral Tests (async) ─────────────────────────────
+
+console.log("\n--- readResearchFiles Behavioral Tests ---");
+
+test("readResearchFiles parses experiment files correctly", async () => {
+  const tmpDir = await mkdtemp(path.join(tmpdir(), "bosun-test-"));
+  const researchDir = path.join(tmpDir, "research");
+  const expDir = path.join(researchDir, "experiments");
+  await mkdir(expDir, { recursive: true });
+
+  await writeFile(path.join(expDir, "EXP-890-test.md"), `---
+id: EXPR-890
+title: Test Experiment
+status: active
+phase: execution
+assignee: M5
+tags: [test]
+---
+
+# Test content`);
+
+  await writeFile(path.join(expDir, "EXP-891-draft.md"), `---
+id: EXPR-891
+title: Draft Experiment
+status: draft
+phase: design
+---
+
+# Draft`);
+
+  const result = await readResearchFiles(tmpDir);
+  assert(result.active.length === 1, `active: ${result.active.length}`);
+  assert(result.draft.length === 1, `draft: ${result.draft.length}`);
+  assert(result.active[0].id === "EXPR-890", `id: ${result.active[0].id}`);
+  assert(result.active[0].type === "experiment", `type: ${result.active[0].type}`);
+  assert(result.active[0].assignee === "M5", `assignee: ${result.active[0].assignee}`);
+  assert(result.active[0].phase === "execution", `phase: ${result.active[0].phase}`);
+  assert(result.draft[0].id === "EXPR-891", `draft id: ${result.draft[0].id}`);
+
+  await rm(tmpDir, { recursive: true });
+});
+
+test("readResearchFiles handles non-existent directories gracefully", async () => {
+  const tmpDir = await mkdtemp(path.join(tmpdir(), "bosun-test-"));
+  // No research/ directory at all
+  const result = await readResearchFiles(tmpDir);
+  assert(result.draft.length === 0, `draft: ${result.draft.length}`);
+  assert(result.active.length === 0, `active: ${result.active.length}`);
+  assert(result.complete.length === 0, `complete: ${result.complete.length}`);
+  assert(result.source === "file-glob", `source: ${result.source}`);
+
+  await rm(tmpDir, { recursive: true });
+});
+
+test("readResearchFiles skips files without frontmatter", async () => {
+  const tmpDir = await mkdtemp(path.join(tmpdir(), "bosun-test-"));
+  const ideasDir = path.join(tmpDir, "research", "ideas");
+  await mkdir(ideasDir, { recursive: true });
+
+  // File with no frontmatter
+  await writeFile(path.join(ideasDir, "random-notes.md"), "# Just some notes\n\nNo YAML here.");
+
+  // File with frontmatter but no id/title
+  await writeFile(path.join(ideasDir, "empty-fm.md"), `---
+tags: [orphan]
+---
+
+# No id or title`);
+
+  // Valid file
+  await writeFile(path.join(ideasDir, "IDEA-R-001.md"), `---
+id: IDEA-R-001
+title: Real Idea
+status: draft
+---
+
+# Content`);
+
+  const result = await readResearchFiles(tmpDir);
+  assert(result.draft.length === 1, `should have 1 draft, got ${result.draft.length}`);
+  assert(result.draft[0].id === "IDEA-R-001", `id: ${result.draft[0].id}`);
+  assert(result.draft[0].type === "idea", `type: ${result.draft[0].type}`);
+
+  await rm(tmpDir, { recursive: true });
+});
+
+test("readResearchFiles buckets abandoned items separately", async () => {
+  const tmpDir = await mkdtemp(path.join(tmpdir(), "bosun-test-"));
+  const expDir = path.join(tmpDir, "research", "experiments");
+  await mkdir(expDir, { recursive: true });
+
+  await writeFile(path.join(expDir, "abandoned.md"), `---
+id: EXPR-999
+title: Abandoned Experiment
+status: abandoned
+---
+
+# Abandoned`);
+
+  const result = await readResearchFiles(tmpDir);
+  assert(result.abandoned.length === 1, `abandoned: ${result.abandoned.length}`);
+  assert(result.draft.length === 0, "not in draft");
+  assert(result.active.length === 0, "not in active");
+
+  await rm(tmpDir, { recursive: true });
+});
+
+test("readResearchFiles reads multiple directories", async () => {
+  const tmpDir = await mkdtemp(path.join(tmpdir(), "bosun-test-"));
+  const researchDir = path.join(tmpDir, "research");
+
+  // Create experiments + literature dirs
+  await mkdir(path.join(researchDir, "experiments"), { recursive: true });
+  await mkdir(path.join(researchDir, "literature"), { recursive: true });
+  await mkdir(path.join(researchDir, "measures"), { recursive: true });
+
+  await writeFile(path.join(researchDir, "experiments", "e1.md"), `---
+id: EXPR-100
+title: Experiment One
+status: active
+---`);
+
+  await writeFile(path.join(researchDir, "literature", "lit1.md"), `---
+id: LIT-001
+title: Literature Review
+status: draft
+---`);
+
+  await writeFile(path.join(researchDir, "measures", "m1.md"), `---
+id: M-001
+title: Accuracy Metric
+status: complete
+---`);
+
+  const result = await readResearchFiles(tmpDir);
+  assert(result.active.length === 1, `active: ${result.active.length}`);
+  assert(result.draft.length === 1, `draft: ${result.draft.length}`);
+  assert(result.complete.length === 1, `complete: ${result.complete.length}`);
+  assert(result.active[0].type === "experiment", `type: ${result.active[0].type}`);
+  assert(result.draft[0].type === "literature", `type: ${result.draft[0].type}`);
+  assert(result.complete[0].type === "measure", `type: ${result.complete[0].type}`);
+
+  await rm(tmpDir, { recursive: true });
+});
+
+test("readResearchFiles skips dotfiles and non-md files", async () => {
+  const tmpDir = await mkdtemp(path.join(tmpdir(), "bosun-test-"));
+  const papersDir = path.join(tmpDir, "research", "papers");
+  await mkdir(papersDir, { recursive: true });
+
+  await writeFile(path.join(papersDir, ".gitkeep"), "");
+  await writeFile(path.join(papersDir, "data.json"), '{"not": "markdown"}');
+  await writeFile(path.join(papersDir, "PAPER-101.md"), `---
+id: PAPER-101
+title: Real Paper
+status: draft
+---`);
+
+  const result = await readResearchFiles(tmpDir);
+  assert(result.draft.length === 1, `should have 1 draft, got ${result.draft.length}`);
+  assert(result.draft[0].id === "PAPER-101", `id: ${result.draft[0].id}`);
+
+  await rm(tmpDir, { recursive: true });
+});
+
 // ─── Summary ────────────────────────────────────────────────────────────────
 
-const failures = summary("Unit tests");
+// Wait for async tests to settle before printing summary
+await new Promise((resolve) => setTimeout(resolve, 500));
+
+const failures = summary("Bosun tests");
 process.exit(failures > 0 ? 1 : 0);
