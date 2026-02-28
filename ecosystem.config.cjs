@@ -16,6 +16,7 @@ module.exports = {
       env: {
         NATS_URL: "nats://localhost:4222",
         SCAN_INTERVAL_MINUTES: "30",
+        ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || "",
       },
       restart_delay: 5000,
     },
