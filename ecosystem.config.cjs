@@ -74,5 +74,16 @@ module.exports = {
       },
       restart_delay: 5000,
     },
+    // CHORE-077: Command Deck dashboard (runs alongside Bosun)
+    {
+      name: "command-deck",
+      script: ".venv/bin/python",
+      args: "dashboard/v2/app.py",
+      cwd: process.env.NUSY_PROJECT_DIR || require("os").homedir() + "/projects/nusy-product-team",
+      env: {
+        NATS_URL: "nats://localhost:4222",
+      },
+      restart_delay: 5000,
+    },
   ],
 };
