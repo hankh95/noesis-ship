@@ -80,6 +80,7 @@ if (intervalIdx !== -1 && args[intervalIdx + 1]) {
 // ─── State ──────────────────────────────────────────────────────────────────
 
 let natsConn = null; // { nc, sc }
+let proposalKV = null; // JetStream KV bucket for proposals (CHORE-078)
 let scanTimer = null;
 let pendingProposals = []; // Latest proposals awaiting approval
 let latestFleetStatus = null; // Cached from ship.fleet.status
@@ -89,6 +90,64 @@ let latestFleetStatus = null; // Cached from ship.fleet.status
 function log(msg) {
   const ts = new Date().toISOString().substring(11, 19);
   console.log(`[${ts}] [Bosun] ${msg}`);
+}
+
+// ─── KV Store (CHORE-078: Proposals persisted for late-joining clients) ─────
+
+/**
+ * Initialize JetStream KV bucket for proposals.
+ * Late-joining clients (Command Deck, beings) can retrieve latest scan.
+ */
+async function initProposalKV(nc) {
+  try {
+    const js = nc.jetstream();
+    const jsm = await nc.jetstreamManager();
+
+    // Create or open bucket with 24h TTL
+    try {
+      proposalKV = await js.views.kv("bosun-proposals", {
+        history: 3, // Keep last 3 scans
+        ttl: 24 * 60 * 60 * 1000, // 24 hours in ms
+      });
+      log("Initialized KV bucket: bosun-proposals");
+    } catch (err) {
+      // If bucket doesn't exist, create it
+      if (err.code === "404") {
+        await jsm.streams.add({
+          name: "KV_bosun-proposals",
+          subjects: ["$KV.bosun-proposals.>"],
+          max_msgs_per_subject: 3,
+          max_age: 24 * 60 * 60 * 1000000000, // 24h in nanoseconds
+          storage: "file",
+          discard: "old",
+          num_replicas: 1,
+        });
+        proposalKV = await js.views.kv("bosun-proposals");
+        log("Created KV bucket: bosun-proposals");
+      } else {
+        throw err;
+      }
+    }
+  } catch (err) {
+    log(`Warning: KV initialization failed — ${err.message}`);
+    log("Proposals will still be published to NATS subject, just not persisted to KV");
+    proposalKV = null;
+  }
+}
+
+/**
+ * Store proposal in KV for late-joining clients.
+ */
+async function storeProposalInKV(proposalMsg) {
+  if (!proposalKV) return;
+
+  try {
+    const value = JSON.stringify(proposalMsg);
+    await proposalKV.put("latest-scan", value);
+    log("Stored latest scan in KV bucket");
+  } catch (err) {
+    log(`Warning: KV store failed — ${err.message}`);
+  }
 }
 
 // ─── Stale Handler ──────────────────────────────────────────────────────────
@@ -126,6 +185,9 @@ async function doScan() {
     } else if (natsConn) {
       publishJSON(natsConn.nc, "ship.fleet.proposal", proposalMsg, config.machineName);
       log(`Published ${pendingProposals.length} proposals to ship.fleet.proposal`);
+
+      // CHORE-078: Store in KV for late-joining clients
+      await storeProposalInKV(proposalMsg);
     }
 
     // Handle stale expeditions (publish alerts, create chores)
@@ -406,6 +468,8 @@ async function main() {
       log("NATS connection failed — running in offline mode (scan-only)");
     } else {
       await subscribeAll(natsConn.nc, natsConn.sc);
+      // CHORE-078: Initialize KV bucket for proposals
+      await initProposalKV(natsConn.nc);
     }
   }
 
