@@ -17,6 +17,8 @@ module.exports = {
         NATS_URL: "nats://localhost:4222",
         SCAN_INTERVAL_MINUTES: "30",
         ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || "",
+        // Disable local LLM — Ollama stuck, use API only (EXP-1029)
+        OLLAMA_BASE_URL: "http://localhost:1/disabled",
       },
       restart_delay: 5000,
     },
@@ -58,6 +60,17 @@ module.exports = {
       env: {
         NATS_URL: "nats://localhost:4222",
         PORT: "3001",
+      },
+      restart_delay: 5000,
+    },
+    // EXP-1030: Persist Bosun proposals to decision journal
+    {
+      name: "bosun-decision-sink",
+      script: ".venv/bin/python",
+      args: "ships/tackle/logs/bosun_decision_sink.py",
+      cwd: process.env.NUSY_PROJECT_DIR || require("os").homedir() + "/projects/nusy-product-team",
+      env: {
+        NATS_URL: "nats://localhost:4222",
       },
       restart_delay: 5000,
     },
