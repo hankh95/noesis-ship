@@ -379,38 +379,43 @@ export async function gatherFleetContext(projectDir, cachedFleetStatus) {
 function formatContext(context) {
   const sections = [];
 
-  // Development Board (Kanban)
+  // Development Board (Kanban) — sorted by ID descending (newest first)
   const { backlog, inProgress } = context.kanban;
+  const sortedBacklog = sortByIdDesc(backlog);
+  const sortedInProgress = sortByIdDesc(inProgress);
   sections.push("## Development Board (kanban-work/)");
   sections.push(`In-progress (${inProgress.length}):`);
-  for (const item of inProgress) {
+  for (const item of sortedInProgress) {
     sections.push(`  - ${item.id}: ${item.title} [${item.priority}] assigned=${item.assignee || "none"}`);
   }
-  sections.push(`Backlog (${backlog.length}):`);
-  for (const item of backlog.slice(0, 15)) {
+  sections.push(`Backlog (${backlog.length}) — sorted newest first:`);
+  for (const item of sortedBacklog.slice(0, 15)) {
     sections.push(`  - ${item.id}: ${item.title} [${item.priority}] tags=${(item.tags || []).join(",")}`);
   }
 
-  // Research Board (HDD items)
+  // Research Board (HDD items) — sorted by ID descending (newest first)
   if (context.research) {
     const { draft = [], active = [], complete = [], abandoned = [] } = context.research;
+    const sortedActive = sortByIdDesc(active);
+    const sortedDraft = sortByIdDesc(draft);
+    const sortedComplete = sortByIdDesc(complete);
     sections.push("\n## Research Board (research/) — HDD Items");
     sections.push("Uses HDD states: draft → active → complete | abandoned");
-    sections.push(`Active (${active.length}):`);
-    for (const item of active.slice(0, 10)) {
+    sections.push(`Active (${active.length}) — sorted newest first:`);
+    for (const item of sortedActive.slice(0, 10)) {
       sections.push(`  - ${item.id}: ${item.title} [phase=${item.phase || "?"}] type=${item.type || "?"} assigned=${item.assignee || "none"}`);
     }
-    sections.push(`Draft (${draft.length}):`);
-    for (const item of draft.slice(0, 10)) {
+    sections.push(`Draft (${draft.length}) — sorted newest first:`);
+    for (const item of sortedDraft.slice(0, 10)) {
       sections.push(`  - ${item.id}: ${item.title} type=${item.type || "?"}`);
     }
     sections.push(`Recently complete (${complete.length}):`);
-    for (const item of complete.slice(0, 5)) {
+    for (const item of sortedComplete.slice(0, 5)) {
       sections.push(`  - ${item.id}: ${item.title}`);
     }
     if (abandoned.length > 0) {
       sections.push(`Abandoned (${abandoned.length}) — do NOT re-propose:`);
-      for (const item of abandoned.slice(0, 5)) {
+      for (const item of sortByIdDesc(abandoned).slice(0, 5)) {
         sections.push(`  - ${item.id}: ${item.title}`);
       }
     }
@@ -591,8 +596,12 @@ export async function runMorningScan({ projectDir, reasoningModel, anthropicApiK
 
     // No LLM available — return raw context for manual review
     if (!result) {
-      // Pick items from both development and research boards
-      const devProposals = context.kanban.backlog.slice(0, 2).map((item) => ({
+      // Sort by ID descending (highest/newest first) before picking
+      const sortedBacklog = sortByIdDesc(context.kanban.backlog);
+      const sortedResearchActive = sortByIdDesc(context.research?.active || []);
+
+      // Pick 3 items from development board (highest ID first)
+      const devProposals = sortedBacklog.slice(0, 3).map((item) => ({
         exp: item.id,
         title: item.title,
         priority: item.priority,
@@ -601,7 +610,7 @@ export async function runMorningScan({ projectDir, reasoningModel, anthropicApiK
       }));
 
       // Include active research items (experiments needing analysis or execution)
-      const researchProposals = (context.research?.active || []).slice(0, 1).map((item) => ({
+      const researchProposals = sortedResearchActive.slice(0, 1).map((item) => ({
         exp: item.id,
         title: item.title,
         priority: item.priority || "medium",
@@ -636,6 +645,23 @@ export async function runMorningScan({ projectDir, reasoningModel, anthropicApiK
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
+
+/**
+ * Extract numeric portion of an ID for sorting.
+ * EXP-1019 → 1019, CHORE-060 → 60, EXPR-130.1 → 130.1
+ */
+function extractIdNumber(id) {
+  const match = (id || "").match(/(\d+(?:\.\d+)?)/);
+  return match ? parseFloat(match[1]) : 0;
+}
+
+/**
+ * Sort items by ID number descending (highest/newest first).
+ * This ensures EXP-1019 comes before EXP-842.
+ */
+function sortByIdDesc(items) {
+  return [...items].sort((a, b) => extractIdNumber(b.id) - extractIdNumber(a.id));
+}
 
 function tryParseJSON(str, fallback) {
   try {
