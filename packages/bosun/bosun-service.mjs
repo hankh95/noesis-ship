@@ -452,25 +452,31 @@ async function main() {
   log(`NATS: ${config.natsUrl}`);
   if (dryRun) log("DRY RUN mode — no NATS publishing, no spawning");
 
+  // Connect to NATS (needed for both scan-once and continuous mode)
+  if (!dryRun) {
+    natsConn = await connectNATS(config.natsUrl, "Bosun", log);
+    if (!natsConn) {
+      log("NATS connection failed — running in offline mode (scan-only)");
+    } else {
+      // CHORE-078: Initialize KV bucket for proposals
+      await initProposalKV(natsConn.nc);
+      // Only subscribe to commands if running continuously
+      if (!scanOnce) {
+        await subscribeAll(natsConn.nc, natsConn.sc);
+      }
+    }
+  }
+
   // --scan-once: run one scan and exit
   if (scanOnce) {
     const result = await doScan();
     if (result && !dryRun) {
       log("Scan complete. Use NATS to approve proposals.");
     }
-    process.exit(0);
-  }
-
-  // Connect to NATS
-  if (!dryRun) {
-    natsConn = await connectNATS(config.natsUrl, "Bosun", log);
-    if (!natsConn) {
-      log("NATS connection failed — running in offline mode (scan-only)");
-    } else {
-      await subscribeAll(natsConn.nc, natsConn.sc);
-      // CHORE-078: Initialize KV bucket for proposals
-      await initProposalKV(natsConn.nc);
+    if (natsConn) {
+      await natsConn.nc.drain();
     }
+    process.exit(0);
   }
 
   // Start scan timer
