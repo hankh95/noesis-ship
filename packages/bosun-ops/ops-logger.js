@@ -13,7 +13,7 @@
  *
  * Environment:
  *   NATS_URL    — NATS server (default: nats://localhost:4222)
- *   OPS_LOG_DIR — Output directory (default: ~/Projects/nusy-product-team/ships/tackle/logs/bosun-ops)
+ *   OPS_LOG_DIR — Output directory (default: auto-detected ~/projects or ~/Projects)
  *
  * EXP-1014 Phase 2 — Operational Data Collection
  */
@@ -25,9 +25,20 @@ const os = require("os");
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
+function detectProjectDir() {
+  const home = os.homedir();
+  // Check lowercase first (Linux/DGX), then uppercase (macOS convention)
+  for (const dir of ["projects", "Projects"]) {
+    const candidate = path.join(home, dir, "nusy-product-team");
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  // Fallback to lowercase if neither exists
+  return path.join(home, "projects", "nusy-product-team");
+}
+
 const NATS_URL = process.env.NATS_URL || "nats://localhost:4222";
 const OPS_LOG_DIR = process.env.OPS_LOG_DIR || path.join(
-  os.homedir(), "Projects/nusy-product-team/ships/tackle/logs/bosun-ops"
+  detectProjectDir(), "ships/tackle/logs/bosun-ops"
 );
 const RECONNECT_INTERVAL = 5000;
 

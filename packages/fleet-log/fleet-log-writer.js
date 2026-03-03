@@ -12,19 +12,31 @@
  *
  * Environment:
  *   NATS_URL    — NATS server (default: nats://localhost:4222)
- *   LOG_DIR     — Output directory (default: ~/Projects/nusy-product-team/ships/tackle/logs)
+ *   LOG_DIR     — Output directory (default: auto-detected ~/projects or ~/Projects)
  *   WINDOW_HOURS — Hours per transcript file (default: 4)
  */
 
 const { connect, StringCodec } = require("nats");
 const fs = require("fs");
 const path = require("path");
+const os = require("os");
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
+function detectProjectDir() {
+  const home = os.homedir();
+  // Check lowercase first (Linux/DGX), then uppercase (macOS convention)
+  for (const dir of ["projects", "Projects"]) {
+    const candidate = path.join(home, dir, "nusy-product-team");
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  // Fallback to lowercase if neither exists
+  return path.join(home, "projects", "nusy-product-team");
+}
+
 const NATS_URL = process.env.NATS_URL || "nats://localhost:4222";
 const LOG_DIR = process.env.LOG_DIR || path.join(
-  require("os").homedir(), "Projects/nusy-product-team/ships/tackle/logs"
+  detectProjectDir(), "ships/tackle/logs"
 );
 const WINDOW_HOURS = parseInt(process.env.WINDOW_HOURS || "4", 10);
 const FLEET_COMMS_DIR = path.join(LOG_DIR, "fleet-comms");
