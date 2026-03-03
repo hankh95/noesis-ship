@@ -23,7 +23,7 @@
  *
  * Environment:
  *   BRIDGE_URL       — WebSocket URL (default: ws://localhost:3100)
- *   PROJECT_DIR      — Project working directory (default: ~/Projects/carclaw)
+ *   PROJECT_DIR      — Project working directory (default: auto-detected ~/projects or ~/Projects)
  *   CLAUDE_BIN       — Path to claude binary (default: auto-detect)
  *   AGENT_NAME       — Display name (default: from bridge machine name)
  *   MAX_TURNS        — Max conversation turns per message (default: 10)

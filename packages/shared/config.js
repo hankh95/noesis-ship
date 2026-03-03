@@ -11,6 +11,19 @@ const path = require("path");
 const os = require("os");
 
 /**
+ * Detect nusy-product-team directory, handling Mac (~/Projects) vs Linux (~/projects).
+ */
+function detectProjectDir() {
+  const fs = require("fs");
+  const home = os.homedir();
+  for (const dir of ["projects", "Projects"]) {
+    const candidate = path.join(home, dir, "nusy-product-team");
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return path.join(home, "projects", "nusy-product-team");
+}
+
+/**
  * Load configuration from environment with sensible defaults.
  * @param {object} [overrides] - Override specific values
  * @returns {object} Configuration object
@@ -32,7 +45,7 @@ function loadConfig(overrides = {}) {
     agents: overrides.agents || process.env.AGENTS || "mini:Mini,m5:M5,dgx:DGX,copilot:Copilot",
 
     // Claude Code
-    projectDir: overrides.projectDir || process.env.PROJECT_DIR || path.join(os.homedir(), "Projects/nusy-product-team"),
+    projectDir: overrides.projectDir || process.env.PROJECT_DIR || detectProjectDir(),
     claudeBin: overrides.claudeBin || process.env.CLAUDE_BIN || "claude",
     claudeSessionDir: overrides.claudeSessionDir || process.env.CLAUDE_SESSION_DIR || "",
     maxTurns: parseInt(overrides.maxTurns || process.env.MAX_TURNS || "10", 10),

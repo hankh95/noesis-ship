@@ -17,7 +17,7 @@
  * Environment:
  *   NATS_URL         — NATS server URL (default: nats://localhost:4222)
  *   BRIDGE_URL       — WebSocket fallback URL (default: ws://localhost:3100)
- *   PROJECT_DIR      — Project working directory (default: ~/Projects/nusy-product-team)
+ *   PROJECT_DIR      — Project working directory (default: auto-detected ~/projects or ~/Projects)
  *   AGENT_NAME       — Display name (default: from hostname)
  *   MAX_TURNS        — Max conversation turns per message (default: 10)
  *   PERMISSION_MODE  — SDK permission mode (default: "default"; set to "bypassPermissions" for unattended operation)
@@ -28,6 +28,7 @@
 import { query } from "@anthropic-ai/claude-agent-sdk";
 import { connect, StringCodec } from "nats";
 import WebSocket from "ws";
+import fs from "fs";
 import path from "path";
 import os from "os";
 import { fileURLToPath } from "url";
@@ -45,9 +46,17 @@ try {
 
 const NATS_URL = process.env.NATS_URL || "nats://localhost:4222";
 const BRIDGE_URL = process.env.BRIDGE_URL || "ws://localhost:3100";
+function detectProjectDir() {
+  const home = os.homedir();
+  for (const dir of ["projects", "Projects"]) {
+    const candidate = path.join(home, dir, "nusy-product-team");
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return path.join(home, "projects", "nusy-product-team");
+}
+
 const PROJECT_DIR =
-  process.env.PROJECT_DIR ||
-  path.join(os.homedir(), "Projects/nusy-product-team");
+  process.env.PROJECT_DIR || detectProjectDir();
 const MAX_TURNS = parseInt(process.env.MAX_TURNS || "10", 10);
 const PERMISSION_MODE = process.env.PERMISSION_MODE || "default";
 const RECONNECT_INTERVAL = 3000;

@@ -25,6 +25,7 @@
 
 import { createRequire } from "module";
 import { fileURLToPath } from "url";
+import fs from "fs";
 import path from "path";
 import os from "os";
 
@@ -53,10 +54,20 @@ import { createStaleHandler } from "./stale-handler.mjs";
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
+function detectProjectDir() {
+  const home = os.homedir();
+  for (const dir of ["projects", "Projects"]) {
+    const candidate = path.join(home, dir, "nusy-product-team");
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return path.join(home, "projects", "nusy-product-team");
+}
+
+const _projectDir = process.env.NUSY_PROJECT_DIR || detectProjectDir();
 const config = {
   natsUrl: process.env.NATS_URL || "nats://localhost:4222",
-  projectDir: process.env.NUSY_PROJECT_DIR || path.join(os.homedir(), "Projects/nusy-product-team"),
-  fleetSpawnPath: process.env.FLEET_SPAWN_PATH || path.join(os.homedir(), "Projects/nusy-product-team/scripts/fleet-spawn.sh"),
+  projectDir: _projectDir,
+  fleetSpawnPath: process.env.FLEET_SPAWN_PATH || path.join(_projectDir, "scripts/fleet-spawn.sh"),
   scanInterval: parseInt(process.env.SCAN_INTERVAL_MINUTES || "30", 10) * 60_000,
   scanOnStartup: process.env.SCAN_ON_STARTUP !== "false",
   machineName: process.env.MACHINE_NAME || os.hostname().split(".")[0],
