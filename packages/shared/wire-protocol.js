@@ -95,65 +95,12 @@ function channelSubject(group) {
   return `ship.channel.${group}`;
 }
 
-/**
- * NATS subject for fleet alerts.
- */
-const FLEET_ALERT_SUBJECT = "ship.fleet.alert";
-
-/**
- * Build a fleet alert payload.
- * @param {string} alertType - Alert type (e.g., "pr_created", "ci_failed", "agent_stuck")
- * @param {object} payload - Alert-specific data
- * @returns {object} Fleet alert payload
- */
-function buildFleetAlert(alertType, payload) {
-  return {
-    type: "fleet_alert",
-    alertType,
-    timestamp: new Date().toISOString(),
-    ...payload,
-  };
-}
-
-/**
- * Get the NATS subject for fleet alerts.
- * @returns {string} NATS subject
- */
-function fleetAlertSubject() {
-  return FLEET_ALERT_SUBJECT;
-}
-
-/**
- * NATS subject for fleet status snapshots.
- */
-const FLEET_STATUS_SUBJECT = "ship.fleet.status";
-
-/**
- * Build a fleet status snapshot payload.
- * @param {Array} agents - Array of agent session objects ({ name, idleMinutes, attached })
- * @param {Array} prs - Array of PR status objects ({ number, title, ciStatus, reviewStatus })
- * @returns {object} Fleet status payload
- */
-function buildFleetStatus(agents, prs) {
-  return {
-    type: "fleet_status",
-    agents,
-    prs,
-    timestamp: new Date().toISOString(),
-  };
-}
-
 module.exports = {
   buildMessage,
   buildKanbanEvent,
-  buildFleetAlert,
-  buildFleetStatus,
   isFromSelf,
   isFromHuman,
   isDirectedTo,
   isFromAgent,
   channelSubject,
-  fleetAlertSubject,
-  FLEET_ALERT_SUBJECT,
-  FLEET_STATUS_SUBJECT,
 };
