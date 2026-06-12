@@ -1,5 +1,10 @@
 # Noesis Ship
 
+> **Name disambiguation:** this repository is the **canonical Python/Node noesis-ship**
+> platform (consumed by NuSy via `git+https`; not on PyPI). The crates.io package
+> [`noesis-ship`](https://crates.io/crates/noesis-ship) is a separate **Rust** NATS layer
+> published from the private NuSy monorepo — same name, two implementations.
+
 An open-source, pluggable multi-agent communication platform. NATS is the core nervous system. WebSocket, MCP, and HTTP/SSE are adapters. Tools like yurtle-kanban plug in alongside.
 
 ## Architecture
