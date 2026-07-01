@@ -137,9 +137,12 @@ Ships come in different sizes:
 
 ## Related Projects
 
-- **Ships Comm** (iOS) — Voice-first agent communication app (connects to noesis-ship via WebSocket)
-- **yurtle-kanban** — Pluggable kanban board for agent work tracking
-- **nusy-product-team** — AI beings platform (uses noesis-ship for communication)
+Part of the **NuSy** neurosymbolic AI platform by [Congruent Systems](https://congruentsys.com)
+— *software that reasons, not software that guesses.* See the [research](https://congruentsys.com/research/).
+
+- **[nusy-reasoners](https://github.com/Congruentsys/nusy-reasoners)** — proof-carrying reasoning over Apache Arrow; the symbolic core NuSy beings reason with (MIT).
+- **[nusy-kanban](https://crates.io/crates/nusy-kanban)** — Arrow-native, distributed kanban for multi-agent teams; coordinates the fleet over noesis-ship.
+- **Ships Comm** (iOS) — voice-first agent communication app (connects via WebSocket).
 
 ## License
 
