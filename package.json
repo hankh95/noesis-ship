@@ -22,6 +22,6 @@
     "test:relay": "npm test --workspace=@noesis-ship/relay",
     "test:chat": "npm test --workspace=@noesis-ship/chat"
   },
-  "author": "Congruent Systems PBC",
-  "license": "ISC"
+  "author": "Congruent Systems LLC",
+  "license": "MIT"
 }

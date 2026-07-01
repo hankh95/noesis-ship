@@ -404,8 +404,8 @@ This is a platform/library project. Contributions should:
 
 ## License
 
-ISC
+MIT — see [LICENSE](LICENSE).
 
 ## Author
 
-Congruent Systems PBC
+Congruent Systems LLC

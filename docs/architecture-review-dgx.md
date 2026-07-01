@@ -531,9 +531,9 @@ Each machine is autonomous. No central coordination required.
 | **Persistence** | JetStream (30-day history) | Unknown |
 | **Adapters** | WebSocket, MCP, HTTP/SSE | WebSocket |
 | **Pluggability** | Event bus, KV store, object store | Unknown |
-| **License** | ISC (open) | Unknown |
+| **License** | MIT (open) | Unknown |
 | **Integration** | Native to NuSy architecture | External dependency |
-| **Maintenance** | Congruent Systems PBC | OpenClaw project |
+| **Maintenance** | Congruent Systems LLC | OpenClaw project |
 
 **Verdict:** Noesis Ship is purpose-built for multi-agent coordination with NuSy beings. OpenClaw is a generic bridge. Switching to Noesis Ship gives us:
 - Unified architecture (same as nusy-product-team)

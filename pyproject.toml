@@ -7,10 +7,10 @@ name = "noesis-ship"
 version = "0.2.0"
 description = "Pluggable multi-agent communication platform — NATS core with WebSocket, MCP, and HTTP/SSE adapters"
 readme = "README.md"
-license = "ISC"
+license = "MIT"
 requires-python = ">=3.11"
 authors = [
-    { name = "Congruent Systems PBC" },
+    { name = "Congruent Systems LLC" },
 ]
 keywords = ["nats", "multi-agent", "communication", "websocket", "mcp"]
 classifiers = [
