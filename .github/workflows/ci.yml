@@ -53,7 +53,6 @@ jobs:
           node --check packages/relay/groups.js
           node --check packages/daemon/agent-daemon.js
           node --check packages/mcp-server/mcp-server.js
-          node --check packages/fleet-log/fleet-log-writer.js
           node --check packages/shared/index.js
           node --check packages/shared/config.js
           node --check packages/shared/nats-helpers.js
