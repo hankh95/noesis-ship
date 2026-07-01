@@ -146,8 +146,8 @@ Part of the **NuSy** neurosymbolic AI platform by [Congruent Systems](https://co
 
 ## License
 
-ISC
+MIT — see [LICENSE](LICENSE).
 
 ## Author
 
-Congruent Systems PBC
+Congruent Systems LLC
